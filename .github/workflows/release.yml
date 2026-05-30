@@ -26,12 +26,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
           dotnet-version: |
@@ -58,12 +58,12 @@ jobs:
       attestations: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
           dotnet-version: |
@@ -87,7 +87,7 @@ jobs:
       - name: Generate build provenance attestations
         # SLSA-style provenance for every nupkg/snupkg we publish. Consumers can
         # later verify with `gh attestation verify <file>`.
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: 'artifacts/*.*nupkg'
 
@@ -101,7 +101,7 @@ jobs:
             --skip-duplicate
 
       - name: Upload artifacts to workflow run
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nupkgs-${{ github.ref_name }}
           path: artifacts/*.*nupkg
