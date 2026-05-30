@@ -67,6 +67,25 @@ exercise the version you're working on. **They are demos, not starter
 templates** — users live in memory and hash internals are shown on screen for
 educational clarity (see each sample's own README).
 
+## Documentation
+
+Documentation is layered so you only read the depth you need:
+
+| Audience / question | Doc |
+| --- | --- |
+| "How do I use it?" | This README, plus [API reference](https://systemslibrarian.github.io/argon2id-passwordhasher/docs/) |
+| "How do I migrate from Identity's default PasswordHasher?" | [`MIGRATION.md`](MIGRATION.md) |
+| "How should I run this in production?" | [`OPERATIONS.md`](OPERATIONS.md) — capacity planning, monitoring, alerting, failure modes |
+| "What about FIPS / SOC 2 / vendor questionnaires?" | [`COMPLIANCE.md`](COMPLIANCE.md) |
+| "What is the security threat model?" | [`THREAT-MODEL.md`](THREAT-MODEL.md) |
+| "How do I store the pepper in Azure Key Vault / AWS / Vault?" | [`docs/pepper-key-management.md`](docs/pepper-key-management.md) |
+| "What's the support and lifecycle policy?" | [`SUPPORT.md`](SUPPORT.md) |
+| "How do I tune the work factor?" | [`docs/parameter-tuning.md`](docs/parameter-tuning.md) |
+| "What does the library deliberately NOT do?" | [`KNOWN-GAPS.md`](KNOWN-GAPS.md) |
+| "How do I report a vulnerability?" | [`SECURITY.md`](SECURITY.md) |
+| "How do I contribute?" | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+| "What changed in this version?" | [`CHANGELOG.md`](CHANGELOG.md) |
+
 ## Table of contents
 
 - [Why this library](#why-this-library)
@@ -288,6 +307,57 @@ Both packages are marked `IsTrimmable=true` and `IsAotCompatible=true`. No refle
 codegen, no `System.Reflection.Emit` — the library uses only BCL crypto primitives plus the
 Konscious managed Argon2 implementation. Native AOT consumers can publish trimmed binaries without
 warnings.
+
+## How this library compares
+
+Quick orientation for the common alternatives in the .NET ecosystem:
+
+| Library | Algorithm | Memory-hard | Self-describing hash | First-class pepper | ASP.NET Identity adapter | TFMs |
+| --- | --- | --- | --- | --- | --- | --- |
+| **`Argon2id.PasswordHasher`** (this library) | **Argon2id (RFC 9106)** | ✅ | ✅ (PHC) | ✅ + rotation | ✅ + migration adapter | net8 / net9 / net10 |
+| `Microsoft.AspNetCore.Identity.PasswordHasher<TUser>` (the default) | PBKDF2 HMAC-SHA-512, 100k iterations | ❌ | semi (version byte prefix) | ❌ | n/a (it *is* the default) | every .NET they support |
+| `Konscious.Security.Cryptography.Argon2` (raw) | Argon2i / Argon2d / Argon2id | ✅ | ❌ (raw bytes) | manual | ❌ | netstandard2.0 |
+| `BCrypt.Net-Next` | bcrypt | ❌ | ✅ (`$2a$…`) | ❌ | community wrappers | netstandard2.0 |
+| `Isopoh.Cryptography.Argon2` | Argon2i / Argon2d / Argon2id | ✅ | ✅ (encoded) | ❌ | ❌ | netstandard2.0 |
+
+When this library is the right choice: you want **Argon2id specifically**
+(per OWASP's current top recommendation for password storage), with
+**self-describing PHC strings** so you can raise the work factor without
+breaking existing users, **optional first-class pepper with rotation**,
+and a **drop-in `IPasswordHasher<TUser>`** so an existing ASP.NET Core
+Identity app can migrate with one line.
+
+When the default `PasswordHasher<TUser>` is the right choice: you're in
+a FIPS-enforced deployment (Argon2id is not FIPS-approved; see
+[`COMPLIANCE.md`](COMPLIANCE.md)). For everything else, Argon2id is the
+modern best answer.
+
+## Performance characteristics
+
+The numbers below are **starting points on typical 2024 server hardware**
+— measure on yours before you ship. See
+[`OPERATIONS.md`](OPERATIONS.md) for the full envelope, capacity model,
+and monitoring guidance.
+
+| Parameter set | Per-hash time | RAM per in-flight hash | Recommended for |
+| --- | --- | --- | --- |
+| `m = 19 456`, `t = 2` (OWASP minimum) | ~30–60 ms | ~19 MiB | Floor; not recommended |
+| `m = 65 536`, `t = 3` (library default) | ~150–250 ms | ~64 MiB | Consumer SaaS, general-purpose |
+| `m = 131 072`, `t = 4` | ~400–600 ms | ~128 MiB | Internal / B2B, latency-tolerant |
+| `m = 262 144`, `t = 5` | ~800 ms – 1.2 s | ~256 MiB | High-value (banking, healthcare) |
+
+Verification time tracks hash time within ~5%. The library emits
+metrics under
+[`Argon2idDiagnostics.MeterName`](src/Argon2id.PasswordHasher/Argon2idDiagnostics.cs)
+so you can chart this directly in your observability stack:
+
+```csharp
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(m => m.AddMeter(Argon2idDiagnostics.MeterName));
+```
+
+Trim and Native AOT publish is supported; both packages are marked
+`IsTrimmable` and `IsAotCompatible`.
 
 ## Security posture
 
