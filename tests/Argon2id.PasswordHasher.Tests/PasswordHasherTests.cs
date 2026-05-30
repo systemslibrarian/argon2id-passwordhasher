@@ -1,4 +1,3 @@
-using Argon2id.PasswordHasher;
 using Xunit;
 
 namespace Argon2id.PasswordHasher.Tests;
@@ -14,7 +13,7 @@ public class PasswordHasherTests
         DegreeOfParallelism = 1,
     };
 
-    private static PasswordHasher CreateHasher() => new(FastOptions);
+    private static Argon2idPasswordHasher CreateHasher() => new(FastOptions);
 
     [Fact]
     public void HashThenVerify_RoundTrips()
@@ -93,11 +92,20 @@ public class PasswordHasherTests
         const string password = "tamper test";
         string hash = hasher.HashPassword(password);
 
-        // Flip the final character of the encoded tag.
-        char last = hash[^1];
-        char replacement = last == 'A' ? 'B' : 'A';
-        string tampered = hash[..^1] + replacement;
+        // Flip a character near the *start* of the encoded tag. The last
+        // base64 character of a 32-byte tag carries only 4 valid bits (2 are
+        // padding), so flipping it can be a no-op decode; mid-tag bytes are
+        // unambiguous. Pick a position deep in the tag and guarantee the
+        // replacement decodes to different bits.
+        int tagStart = hash.LastIndexOf('$') + 1;
+        int idx = tagStart + 4;
+        char original = hash[idx];
+        // Flip the high nibble of the base64 character so the decoded byte
+        // differs by at least 0x10 — well clear of any boundary-padding bit.
+        char replacement = original is 'A' or 'a' or '0' or '+' or '/' ? 'Z' : 'A';
+        string tampered = hash[..idx] + replacement + hash[(idx + 1)..];
 
+        Assert.NotEqual(hash, tampered);
         Assert.False(hasher.VerifyPassword(password, tampered));
     }
 
@@ -106,17 +114,17 @@ public class PasswordHasherTests
     {
         var weak = new Argon2idOptions { MemorySizeKib = 1024 };
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => new PasswordHasher(weak));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new Argon2idPasswordHasher(weak));
     }
 
     [Fact]
     public void NeedsRehash_StrongerCurrentParameters_ReturnsTrue()
     {
         // Hash with weak params, then check against a stronger hasher.
-        var weakHasher = new PasswordHasher(FastOptions);
+        var weakHasher = new Argon2idPasswordHasher(FastOptions);
         string oldHash = weakHasher.HashPassword("upgrade me");
 
-        var strongHasher = new PasswordHasher(new Argon2idOptions
+        var strongHasher = new Argon2idPasswordHasher(new Argon2idOptions
         {
             MemorySizeKib = 65536,
             Iterations = 3,
@@ -149,11 +157,11 @@ public class PasswordHasherTests
     public void Verify_UnicodePassword_RoundTrips()
     {
         var hasher = CreateHasher();
-        const string password = "пароль🔐Pässwört";
+        const string password = "пароль\U0001f510Pässwört";
 
         string hash = hasher.HashPassword(password);
 
         Assert.True(hasher.VerifyPassword(password, hash));
-        Assert.False(hasher.VerifyPassword("пароль🔐Passwort", hash));
+        Assert.False(hasher.VerifyPassword("пароль\U0001f510Passwort", hash));
     }
 }

@@ -1,5 +1,3 @@
-using System.Text;
-using Argon2id.PasswordHasher;
 using Xunit;
 
 namespace Argon2id.PasswordHasher.Tests;
@@ -15,7 +13,7 @@ public class PepperTests
 
     private static byte[] Key(byte fill) => Enumerable.Repeat(fill, 32).ToArray();
 
-    private static PasswordHasher Hasher(PepperRing? ring) => new(FastOptions, ring);
+    private static Argon2idPasswordHasher Hasher(PepperRing? ring) => new(FastOptions, ring);
 
     [Fact]
     public void PepperedHash_EmbedsKeyId_AndVerifies()

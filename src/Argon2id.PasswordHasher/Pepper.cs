@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Argon2id.PasswordHasher;
 
 /// <summary>
@@ -41,7 +43,9 @@ public sealed class Pepper
         }
 
         Id = id;
-        _key = (byte[])key.Clone(); // defensive copy so the caller can zero its own buffer
+        // Defensive copy so the caller can zero its own buffer. Held for the lifetime
+        // of this Pepper and reused on every hash/verify (see KnownSecret).
+        _key = (byte[])key.Clone();
     }
 
     /// <summary>The stable identifier embedded in hashes produced with this pepper.</summary>
@@ -49,6 +53,14 @@ public sealed class Pepper
 
     /// <summary>The secret key bytes. Internal: never serialized or exposed publicly.</summary>
     internal ReadOnlySpan<byte> Key => _key;
+
+    /// <summary>
+    /// The cached, defensive copy of the key bytes handed directly to the underlying
+    /// Argon2 implementation as its <c>KnownSecret</c>. Reusing the same array avoids
+    /// a per-call <see cref="Array.Clone"/>; Konscious treats <c>KnownSecret</c> as
+    /// read-only input.
+    /// </summary>
+    internal byte[] KnownSecret => _key;
 }
 
 /// <summary>
@@ -59,7 +71,7 @@ public sealed class Pepper
 /// <remarks>
 /// To rotate: construct a new ring whose <see cref="Active"/> pepper is the new key and
 /// whose retired list contains the previous key(s). Existing hashes keep verifying with
-/// their original pepper, and <see cref="PasswordHasher.NeedsRehash(string)"/> reports
+/// their original pepper, and <see cref="Argon2idPasswordHasher.NeedsRehash(string)"/> reports
 /// that they should be upgraded to the active pepper on the next successful login.
 /// </remarks>
 public sealed class PepperRing
@@ -97,5 +109,6 @@ public sealed class PepperRing
     public Pepper Active { get; }
 
     /// <summary>Looks up a pepper by the id stored in a hash.</summary>
-    internal bool TryGet(string id, out Pepper pepper) => _byId.TryGetValue(id, out pepper!);
+    internal bool TryGet(string id, [NotNullWhen(true)] out Pepper? pepper) =>
+        _byId.TryGetValue(id, out pepper);
 }

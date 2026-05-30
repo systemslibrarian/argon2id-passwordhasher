@@ -1,0 +1,40 @@
+#nullable enable
+Argon2id.PasswordHasher.Argon2idOptions
+Argon2id.PasswordHasher.Argon2idOptions.Argon2idOptions() -> void
+Argon2id.PasswordHasher.Argon2idOptions.<Clone>$() -> Argon2id.PasswordHasher.Argon2idOptions!
+Argon2id.PasswordHasher.Argon2idOptions.DegreeOfParallelism.get -> int
+Argon2id.PasswordHasher.Argon2idOptions.DegreeOfParallelism.init -> void
+Argon2id.PasswordHasher.Argon2idOptions.Equals(Argon2id.PasswordHasher.Argon2idOptions? other) -> bool
+Argon2id.PasswordHasher.Argon2idOptions.HashSizeBytes.get -> int
+Argon2id.PasswordHasher.Argon2idOptions.HashSizeBytes.init -> void
+Argon2id.PasswordHasher.Argon2idOptions.Iterations.get -> int
+Argon2id.PasswordHasher.Argon2idOptions.Iterations.init -> void
+Argon2id.PasswordHasher.Argon2idOptions.MemorySizeKib.get -> int
+Argon2id.PasswordHasher.Argon2idOptions.MemorySizeKib.init -> void
+Argon2id.PasswordHasher.Argon2idOptions.SaltSizeBytes.get -> int
+Argon2id.PasswordHasher.Argon2idOptions.SaltSizeBytes.init -> void
+Argon2id.PasswordHasher.Argon2idOptions.Validate() -> void
+Argon2id.PasswordHasher.Argon2idPasswordHasher
+Argon2id.PasswordHasher.Argon2idPasswordHasher.Argon2idPasswordHasher() -> void
+Argon2id.PasswordHasher.Argon2idPasswordHasher.Argon2idPasswordHasher(Argon2id.PasswordHasher.Argon2idOptions! options) -> void
+Argon2id.PasswordHasher.Argon2idPasswordHasher.Argon2idPasswordHasher(Argon2id.PasswordHasher.Argon2idOptions! options, Argon2id.PasswordHasher.PepperRing? pepper) -> void
+Argon2id.PasswordHasher.Argon2idPasswordHasher.HashPassword(System.ReadOnlySpan<byte> password) -> string!
+Argon2id.PasswordHasher.Argon2idPasswordHasher.HashPassword(System.ReadOnlySpan<char> password) -> string!
+Argon2id.PasswordHasher.Argon2idPasswordHasher.HashPassword(string! password) -> string!
+Argon2id.PasswordHasher.Argon2idPasswordHasher.NeedsRehash(string! encodedHash) -> bool
+Argon2id.PasswordHasher.Argon2idPasswordHasher.Options.get -> Argon2id.PasswordHasher.Argon2idOptions!
+Argon2id.PasswordHasher.Argon2idPasswordHasher.VerifyPassword(System.ReadOnlySpan<byte> password, string! encodedHash) -> bool
+Argon2id.PasswordHasher.Argon2idPasswordHasher.VerifyPassword(System.ReadOnlySpan<char> password, string! encodedHash) -> bool
+Argon2id.PasswordHasher.Argon2idPasswordHasher.VerifyPassword(string! password, string! encodedHash) -> bool
+Argon2id.PasswordHasher.Pepper
+Argon2id.PasswordHasher.Pepper.Id.get -> string!
+Argon2id.PasswordHasher.Pepper.Pepper(string! id, byte[]! key) -> void
+Argon2id.PasswordHasher.PepperRing
+Argon2id.PasswordHasher.PepperRing.Active.get -> Argon2id.PasswordHasher.Pepper!
+Argon2id.PasswordHasher.PepperRing.PepperRing(Argon2id.PasswordHasher.Pepper! active, params Argon2id.PasswordHasher.Pepper![]! retired) -> void
+override Argon2id.PasswordHasher.Argon2idOptions.Equals(object? obj) -> bool
+override Argon2id.PasswordHasher.Argon2idOptions.GetHashCode() -> int
+override Argon2id.PasswordHasher.Argon2idOptions.ToString() -> string!
+static Argon2id.PasswordHasher.Argon2idOptions.Recommended.get -> Argon2id.PasswordHasher.Argon2idOptions!
+static Argon2id.PasswordHasher.Argon2idOptions.operator !=(Argon2id.PasswordHasher.Argon2idOptions? left, Argon2id.PasswordHasher.Argon2idOptions? right) -> bool
+static Argon2id.PasswordHasher.Argon2idOptions.operator ==(Argon2id.PasswordHasher.Argon2idOptions? left, Argon2id.PasswordHasher.Argon2idOptions? right) -> bool

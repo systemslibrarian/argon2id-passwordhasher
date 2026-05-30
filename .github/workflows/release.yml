@@ -1,45 +1,122 @@
 name: Release
 
 # Packs and publishes both packages to NuGet when a version tag is pushed, e.g.:
-#   git tag v0.2.0-preview.1 && git push origin v0.2.0-preview.1
+#   git tag v0.3.0-preview.1 && git push origin v0.3.0-preview.1
 # Requires a repository secret named NUGET_API_KEY.
 
 on:
   push:
     tags: [ 'v*' ]
 
+# Least privilege by default. Individual jobs raise only what they need.
 permissions:
   contents: read
 
-jobs:
-  publish:
-    name: Pack & Publish
-    runs-on: ubuntu-latest
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup .NET 10
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: global.json
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
 
       - name: Restore
         run: dotnet restore
 
       - name: Build
-        run: dotnet build -c Release --no-restore
+        run: dotnet build -c Release --no-restore -warnaserror
 
       - name: Test
-        run: dotnet test -c Release --no-build --verbosity normal
+        run: dotnet test -c Release --no-build
+
+  publish:
+    name: Pack & Publish to NuGet
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write    # create the GitHub Release
+      id-token: write    # required for build provenance attestations
+      attestations: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c Release --no-restore -warnaserror
 
       - name: Pack
         run: |
-          dotnet pack src/Argon2id.PasswordHasher/Argon2id.PasswordHasher.csproj -c Release --no-build -o artifacts
-          dotnet pack src/Argon2id.PasswordHasher.AspNetCore/Argon2id.PasswordHasher.AspNetCore.csproj -c Release --no-build -o artifacts
+          dotnet pack src/Argon2id.PasswordHasher/Argon2id.PasswordHasher.csproj \
+            -c Release --no-build -o artifacts
+          dotnet pack src/Argon2id.PasswordHasher.AspNetCore/Argon2id.PasswordHasher.AspNetCore.csproj \
+            -c Release --no-build -o artifacts
+
+      - name: Generate build provenance attestations
+        # SLSA-style provenance for every nupkg/snupkg we publish. Consumers can
+        # later verify with `gh attestation verify <file>`.
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: 'artifacts/*.*nupkg'
 
       - name: Publish to NuGet
-        run: dotnet nuget push "artifacts/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+        # --skip-duplicate makes the workflow idempotent if a tag is re-pushed.
+        # The wildcard picks up both .nupkg and .snupkg.
+        run: |
+          dotnet nuget push "artifacts/*.nupkg" \
+            --api-key "${{ secrets.NUGET_API_KEY }}" \
+            --source https://api.nuget.org/v3/index.json \
+            --skip-duplicate
+
+      - name: Upload artifacts to workflow run
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkgs-${{ github.ref_name }}
+          path: artifacts/*.*nupkg
+          retention-days: 90
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PRERELEASE_FLAG=""
+          if [[ "${{ github.ref_name }}" == *-* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          gh release create "${{ github.ref_name }}" \
+            artifacts/*.nupkg artifacts/*.snupkg \
+            --title "${{ github.ref_name }}" \
+            --generate-notes \
+            $PRERELEASE_FLAG

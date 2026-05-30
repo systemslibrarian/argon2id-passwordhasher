@@ -1,5 +1,4 @@
 using System.Text;
-using Argon2id.PasswordHasher;
 using Xunit;
 
 namespace Argon2id.PasswordHasher.Tests;
@@ -13,7 +12,7 @@ public class SpanOverloadTests
         DegreeOfParallelism = 1,
     };
 
-    private static PasswordHasher CreateHasher() => new(FastOptions);
+    private static Argon2idPasswordHasher CreateHasher() => new(FastOptions);
 
     [Fact]
     public void CharSpan_RoundTrips()

@@ -20,13 +20,13 @@ namespace Argon2id.PasswordHasher;
 /// </para>
 /// <example>
 /// <code>
-/// var hasher = new PasswordHasher();
+/// var hasher = new Argon2idPasswordHasher();
 /// string stored = hasher.HashPassword("correct horse battery staple");
 /// bool ok = hasher.VerifyPassword("correct horse battery staple", stored); // true
 /// </code>
 /// </example>
 /// </remarks>
-public sealed class PasswordHasher
+public sealed class Argon2idPasswordHasher
 {
     private readonly Argon2idOptions _options;
     private readonly PepperRing? _pepper;
@@ -35,7 +35,7 @@ public sealed class PasswordHasher
     /// Creates a hasher using the library's recommended defaults
     /// (<see cref="Argon2idOptions.Recommended"/>) and no pepper.
     /// </summary>
-    public PasswordHasher()
+    public Argon2idPasswordHasher()
         : this(Argon2idOptions.Recommended, pepper: null)
     {
     }
@@ -46,7 +46,7 @@ public sealed class PasswordHasher
     /// <param name="options">The Argon2id parameters to use for new hashes.</param>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Any parameter is outside the safe range.</exception>
-    public PasswordHasher(Argon2idOptions options)
+    public Argon2idPasswordHasher(Argon2idOptions options)
         : this(options, pepper: null)
     {
     }
@@ -62,7 +62,7 @@ public sealed class PasswordHasher
     /// </param>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException">Any parameter is outside the safe range.</exception>
-    public PasswordHasher(Argon2idOptions options, PepperRing? pepper)
+    public Argon2idPasswordHasher(Argon2idOptions options, PepperRing? pepper)
     {
         ArgumentNullException.ThrowIfNull(options);
         options.Validate();
@@ -201,22 +201,27 @@ public sealed class PasswordHasher
     private string HashAndZero(byte[] password)
     {
         byte[] salt = RandomNumberGenerator.GetBytes(_options.SaltSizeBytes);
+        byte[]? hash = null;
         try
         {
-            // ReadOnlySpan<byte> is a ref struct and cannot be nullable, so resolve it explicitly.
-            ReadOnlySpan<byte> secret = _pepper is null ? default : _pepper.Active.Key;
-            byte[] hash = Compute(password, salt, _options.MemorySizeKib, _options.Iterations,
-                _options.DegreeOfParallelism, _options.HashSizeBytes, secret);
+            hash = Compute(password, salt, _options.MemorySizeKib, _options.Iterations,
+                _options.DegreeOfParallelism, _options.HashSizeBytes, _pepper?.Active.KnownSecret);
             return PhcString.Encode(_options, salt, hash, _pepper?.Active.Id);
         }
         finally
         {
             CryptographicOperations.ZeroMemory(password);
+            CryptographicOperations.ZeroMemory(salt);
+            if (hash is not null)
+            {
+                CryptographicOperations.ZeroMemory(hash);
+            }
         }
     }
 
     private bool VerifyAndZero(byte[] password, string encodedHash)
     {
+        byte[]? candidate = null;
         try
         {
             // Re-parse here so all paths share a single parse; callers already confirmed it parses.
@@ -225,21 +230,21 @@ public sealed class PasswordHasher
                 return false;
             }
 
-            ReadOnlySpan<byte> secret = default;
+            byte[]? secret = null;
             if (parsed!.KeyId is not null)
             {
                 // The hash was peppered: we can only verify if we hold that pepper.
-                if (_pepper is null || !_pepper.TryGet(parsed.KeyId, out Pepper pepper))
+                if (_pepper is null || !_pepper.TryGet(parsed.KeyId, out Pepper? pepper))
                 {
                     return false;
                 }
 
-                secret = pepper.Key;
+                secret = pepper.KnownSecret;
             }
 
             // Recompute using the *stored* parameters so verification keeps working
             // even after the hasher's defaults or active pepper have changed.
-            byte[] candidate = Compute(password, parsed.Salt, parsed.MemorySizeKib,
+            candidate = Compute(password, parsed.Salt, parsed.MemorySizeKib,
                 parsed.Iterations, parsed.DegreeOfParallelism, parsed.Hash.Length, secret);
 
             return CryptographicOperations.FixedTimeEquals(candidate, parsed.Hash);
@@ -247,6 +252,10 @@ public sealed class PasswordHasher
         finally
         {
             CryptographicOperations.ZeroMemory(password);
+            if (candidate is not null)
+            {
+                CryptographicOperations.ZeroMemory(candidate);
+            }
         }
     }
 
@@ -258,7 +267,7 @@ public sealed class PasswordHasher
     }
 
     private static byte[] Compute(byte[] password, byte[] salt, int memoryKib, int iterations,
-        int parallelism, int hashLength, ReadOnlySpan<byte> secret)
+        int parallelism, int hashLength, byte[]? secret)
     {
         // Fully qualified: the library's own root namespace begins with "Argon2id",
         // which would otherwise shadow the Konscious type name.
@@ -270,9 +279,11 @@ public sealed class PasswordHasher
             DegreeOfParallelism = parallelism,
         };
 
-        if (!secret.IsEmpty)
+        if (secret is not null)
         {
-            argon2.KnownSecret = secret.ToArray();
+            // Reuse the pepper's cached byte[] (already a defensive copy held by Pepper),
+            // avoiding a per-call allocation. Konscious treats KnownSecret as read-only.
+            argon2.KnownSecret = secret;
         }
 
         return argon2.GetBytes(hashLength);

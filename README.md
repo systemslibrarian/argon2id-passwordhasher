@@ -2,12 +2,15 @@
 
 # 🔐 Argon2id.PasswordHasher
 
-**The opinionated, secure-by-default Argon2id password hasher for .NET 10.**
+**The opinionated, secure-by-default Argon2id password hasher for .NET 8, 9, and 10.**
 
+[![CI](https://github.com/systemslibrarian/argon2id-passwordhasher/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/systemslibrarian/argon2id-passwordhasher/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/systemslibrarian/argon2id-passwordhasher/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/systemslibrarian/argon2id-passwordhasher/actions/workflows/codeql.yml)
+[![NuGet](https://img.shields.io/nuget/vpre/Argon2id.PasswordHasher.svg?logo=nuget&label=Argon2id.PasswordHasher)](https://www.nuget.org/packages/Argon2id.PasswordHasher)
+[![NuGet (AspNetCore)](https://img.shields.io/nuget/vpre/Argon2id.PasswordHasher.AspNetCore.svg?logo=nuget&label=.AspNetCore)](https://www.nuget.org/packages/Argon2id.PasswordHasher.AspNetCore)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4.svg)](https://dotnet.microsoft.com/)
-[![NuGet](https://img.shields.io/badge/nuget-0.2.0--preview.1-orange.svg)](https://www.nuget.org/packages/Argon2id.PasswordHasher)
-[![Status](https://img.shields.io/badge/status-preview-yellow.svg)](#versioning--status)
+[![.NET](https://img.shields.io/badge/.NET-8%20%7C%209%20%7C%2010-512BD4.svg)](https://dotnet.microsoft.com/)
+[![AOT](https://img.shields.io/badge/AOT-compatible-success.svg)](#)
 
 *Memory-hard password hashing that's hard to get wrong.*
 
@@ -24,13 +27,31 @@ integration — without having to become a cryptographer first.
 ```csharp
 using Argon2id.PasswordHasher;
 
-var hasher = new PasswordHasher();
+var hasher = new Argon2idPasswordHasher();
 
 string stored = hasher.HashPassword("correct horse battery staple");
 //   $argon2id$v=19$m=65536,t=3,p=1$<salt>$<hash>
 
 bool ok = hasher.VerifyPassword("correct horse battery staple", stored); // true
 ```
+
+## Try the demo
+
+A runnable Blazor Server sample lives in [`samples/Argon2id.PasswordHasher.Demo`](samples/Argon2id.PasswordHasher.Demo).
+It shows registration, login, and a live breakdown of the PHC hash string so you
+can *see* exactly what gets stored:
+
+```bash
+git clone https://github.com/systemslibrarian/argon2id-passwordhasher.git
+cd argon2id-passwordhasher
+dotnet run --project samples/Argon2id.PasswordHasher.Demo
+# then open the URL it prints (e.g. https://localhost:5001)
+```
+
+The sample uses a `ProjectReference` to the in-tree library, so it always
+exercises the version you're working on. **It is a demo, not a starter
+template** — it stores users in process memory and shows hash internals on
+screen for educational clarity (see the sample's own README).
 
 ## Table of contents
 
@@ -44,6 +65,7 @@ bool ok = hasher.VerifyPassword("correct horse battery staple", stored); // true
 - [Avoiding `string` passwords (span overloads)](#avoiding-string-passwords-span-overloads)
 - [Pepper (secret key) with rotation](#pepper-secret-key-with-rotation)
 - [ASP.NET Core Identity](#aspnet-core-identity)
+- [Trimming & Native AOT](#trimming--native-aot)
 - [Security posture](#security-posture)
 - [API reference](#api-reference)
 - [FAQ](#faq)
@@ -62,6 +84,7 @@ bool ok = hasher.VerifyPassword("correct horse battery staple", stored); // true
 | ⏱️ **Constant-time** | Final comparison uses `CryptographicOperations.FixedTimeEquals`. |
 | 🌶️ **Pepper with rotation** | Optional keyed secret kept outside your database, with first-class key rotation. |
 | 🧩 **ASP.NET Core ready** | Drop-in `IPasswordHasher<TUser>` + a one-line DI extension. |
+| 🚀 **Trim + AOT compatible** | Marked `IsTrimmable` and `IsAotCompatible` so Native AOT consumers just work. |
 | 🧼 **Tiny & honest** | One runtime dependency. Every real limitation is documented in [`KNOWN-GAPS.md`](KNOWN-GAPS.md). |
 
 ## Packages
@@ -70,6 +93,8 @@ bool ok = hasher.VerifyPassword("correct horse battery staple", stored); // true
 | --- | --- | --- |
 | [`Argon2id.PasswordHasher`](https://www.nuget.org/packages/Argon2id.PasswordHasher) | Core hasher — no web/framework dependency | Konscious.Security.Cryptography.Argon2 |
 | [`Argon2id.PasswordHasher.AspNetCore`](https://www.nuget.org/packages/Argon2id.PasswordHasher.AspNetCore) | `IPasswordHasher<TUser>` adapter + DI extension | the core package + Microsoft.Extensions.Identity.Core |
+
+Both packages target **`net8.0`, `net9.0`, and `net10.0`**.
 
 ## Install
 
@@ -81,14 +106,12 @@ dotnet add package Argon2id.PasswordHasher --prerelease
 dotnet add package Argon2id.PasswordHasher.AspNetCore --prerelease
 ```
 
-Requires the **.NET 10** SDK/runtime.
-
 ## Quick start
 
 **Registration** — hash the password and store the returned string:
 
 ```csharp
-var hasher = new PasswordHasher();
+var hasher = new Argon2idPasswordHasher();
 user.PasswordHash = hasher.HashPassword(password);
 await db.SaveChangesAsync();
 ```
@@ -111,8 +134,8 @@ if (hasher.NeedsRehash(user.PasswordHash))
 stored value simply returns `false`.
 
 > [!TIP]
-> `PasswordHasher` is stateless and thread-safe. Create one and reuse it (e.g. register it as a
-> singleton) rather than constructing one per request.
+> `Argon2idPasswordHasher` is stateless and thread-safe. Create one and reuse it (e.g. register
+> it as a singleton) rather than constructing one per request.
 
 ## The hash format
 
@@ -135,7 +158,7 @@ Pass an `Argon2idOptions` to tune the work factor. Invalid values (below the saf
 `ArgumentOutOfRangeException` at construction — fail fast, not silently weak.
 
 ```csharp
-var hasher = new PasswordHasher(new Argon2idOptions
+var hasher = new Argon2idPasswordHasher(new Argon2idOptions
 {
     MemorySizeKib       = 131072, // 128 MiB
     Iterations          = 4,
@@ -202,7 +225,7 @@ stolen hashes can't be cracked offline. Peppers here are **keyed and rotatable**
 ```csharp
 byte[] key = GetPepperFromVault();             // ≥ 16 bytes, kept secret
 var ring   = new PepperRing(new Pepper("2026-05", key));
-var hasher = new PasswordHasher(Argon2idOptions.Recommended, ring);
+var hasher = new Argon2idPasswordHasher(Argon2idOptions.Recommended, ring);
 
 string hash = hasher.HashPassword(password);
 //   $argon2id$v=19$m=65536,t=3,p=1,keyid=<id>$<salt>$<hash>
@@ -241,6 +264,13 @@ singleton. Verification maps cleanly onto Identity's contract:
 | `SuccessRehashNeeded` | Password matches but the hash is weaker than current settings / uses an old pepper. Identity rehashes it automatically. |
 | `Failed` | Password doesn't match, or the stored value is malformed. |
 
+## Trimming & Native AOT
+
+Both packages are marked `IsTrimmable=true` and `IsAotCompatible=true`. No reflection, no dynamic
+codegen, no `System.Reflection.Emit` — the library uses only BCL crypto primitives plus the
+Konscious managed Argon2 implementation. Native AOT consumers can publish trimmed binaries without
+warnings.
+
 ## Security posture
 
 | Concern | How this library handles it |
@@ -249,10 +279,11 @@ singleton. Verification maps cleanly onto Identity's contract:
 | Rainbow tables | 128-bit cryptographically random salt per hash (`RandomNumberGenerator`) |
 | Parameter drift | Parameters embedded in the PHC string + `NeedsRehash` |
 | Timing side channels | `FixedTimeEquals` on the final comparison |
-| Sensitive memory | Password-derived byte buffers zeroed; `Span` overloads avoid `string` |
+| Sensitive memory | Password, salt, and candidate hash buffers zeroed with `CryptographicOperations.ZeroMemory`; `Span` overloads avoid `string` |
 | Database-only leak | Optional keyed **pepper** (secret kept outside the DB), with rotation |
 | Algorithm confusion | Verifier accepts only `argon2id`, version 19 |
 | Insecure config | Below-minimum parameters throw at construction |
+| Supply chain | SourceLink, deterministic builds, `NuGetAudit` at build time, CodeQL, build-provenance attestations on every release |
 
 **This library is one layer.** It does not provide rate limiting, account lockout, breached-password
 checks, or MFA — those belong at your application/identity layer. For a frank account of everything
@@ -261,12 +292,12 @@ it does *not* do (plaintext `string` lifetime, memory-cost DoS, and more), read
 
 ## API reference
 
-**`PasswordHasher`**
+**`Argon2idPasswordHasher`**
 
 ```csharp
-PasswordHasher()                                          // recommended defaults, no pepper
-PasswordHasher(Argon2idOptions options)                   // custom parameters
-PasswordHasher(Argon2idOptions options, PepperRing? pepper)
+Argon2idPasswordHasher()                                          // recommended defaults, no pepper
+Argon2idPasswordHasher(Argon2idOptions options)                   // custom parameters
+Argon2idPasswordHasher(Argon2idOptions options, PepperRing? pepper)
 
 string HashPassword(string password)
 string HashPassword(ReadOnlySpan<char> password)
@@ -289,6 +320,9 @@ Argon2idOptions Options { get; }
 
 **`Argon2id.PasswordHasher.AspNetCore`** — `Argon2idPasswordHasher<TUser> : IPasswordHasher<TUser>`
 and `IServiceCollection.AddArgon2idPasswordHasher<TUser>(options?, pepper?)`.
+
+The full public surface is locked by [`Microsoft.CodeAnalysis.PublicApiAnalyzers`](https://github.com/dotnet/roslyn-analyzers/blob/main/src/PublicApiAnalyzers/PublicApiAnalyzers.Help.md);
+see `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` next to each csproj.
 
 ## FAQ
 
@@ -316,6 +350,9 @@ dotnet test  -c Release
 
 # Run the benchmarks (Release only)
 dotnet run -c Release --project benchmarks/Argon2id.PasswordHasher.Benchmarks
+
+# Run the Blazor demo
+dotnet run --project samples/Argon2id.PasswordHasher.Demo
 ```
 
 Repository layout:
@@ -325,19 +362,26 @@ src/Argon2id.PasswordHasher/              core library
 src/Argon2id.PasswordHasher.AspNetCore/   IPasswordHasher<TUser> adapter + DI
 tests/                                     xUnit test projects
 benchmarks/                                BenchmarkDotNet harness
+samples/Argon2id.PasswordHasher.Demo/      runnable Blazor Server demo
 docs/                                      tuning & design notes
+.github/                                   CI, CodeQL, Dependabot, templates
 ```
 
-CI builds and tests on every push/PR; tagged releases (`v*`) pack and publish both packages.
+CI builds and tests on every push/PR across Ubuntu, Windows, and macOS for all three TFMs.
+CodeQL scans run weekly. Tagged releases (`v*`) pack and publish both packages with build-provenance
+attestations.
 
 ## Versioning & status
 
-`0.2.0-preview.1` — **preview**. Follows SemVer with preview suffixes. The API and defaults may
+`0.3.0-preview.1` — **preview**. Follows SemVer with preview suffixes. The API and defaults may
 still change before `1.0.0`; hashes use the standard PHC format and are expected to stay verifiable.
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the full version history.
 
 ## Contributing & security
 
-Issues and PRs are welcome. Security-relevant changes should update
+Issues and PRs are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md) and
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md). Security-relevant changes should update
 [`SECURITY.md`](SECURITY.md) and/or [`KNOWN-GAPS.md`](KNOWN-GAPS.md).
 
 **Found a vulnerability?** Please report it privately — see [`SECURITY.md`](SECURITY.md). Do not
@@ -345,7 +389,8 @@ open public issues for security reports.
 
 ## License & acknowledgements
 
-[MIT](LICENSE) © Paul Clark.
+[MIT](LICENSE) © Paul Clark. See [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) for upstream
+attributions.
 
 Built on [Konscious.Security.Cryptography.Argon2](https://github.com/kmaragon/Konscious.Security.Cryptography),
 an MIT-licensed managed Argon2 implementation. Parameter guidance follows

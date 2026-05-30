@@ -1,0 +1,37 @@
+# Enforce LF line endings repo-wide so .editorconfig + `dotnet format` stay
+# happy on every platform. Text autodetection still applies — these rules only
+# pin the line-ending policy.
+
+* text=auto eol=lf
+
+# Source
+*.cs           text eol=lf
+*.csproj       text eol=lf
+*.props        text eol=lf
+*.targets      text eol=lf
+*.sln          text eol=lf
+*.slnx         text eol=lf
+*.razor        text eol=lf
+
+# Config / docs
+*.json         text eol=lf
+*.yml          text eol=lf
+*.yaml         text eol=lf
+*.md           text eol=lf
+*.txt          text eol=lf
+.editorconfig  text eol=lf
+.gitattributes text eol=lf
+
+# Windows shells stay CRLF
+*.bat          text eol=crlf
+*.cmd          text eol=crlf
+*.ps1          text eol=crlf
+
+# Binaries
+*.png          binary
+*.jpg          binary
+*.jpeg         binary
+*.gif          binary
+*.ico          binary
+*.snk          binary
+*.pfx          binary

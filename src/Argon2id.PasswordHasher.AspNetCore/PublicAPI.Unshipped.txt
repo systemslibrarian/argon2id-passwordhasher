@@ -1,0 +1,7 @@
+#nullable enable
+Argon2id.PasswordHasher.AspNetCore.Argon2idPasswordHasher<TUser>
+Argon2id.PasswordHasher.AspNetCore.Argon2idPasswordHasher<TUser>.Argon2idPasswordHasher(Argon2id.PasswordHasher.Argon2idPasswordHasher! hasher) -> void
+Argon2id.PasswordHasher.AspNetCore.Argon2idPasswordHasher<TUser>.HashPassword(TUser! user, string! password) -> string!
+Argon2id.PasswordHasher.AspNetCore.Argon2idPasswordHasher<TUser>.VerifyHashedPassword(TUser! user, string! hashedPassword, string! providedPassword) -> Microsoft.AspNetCore.Identity.PasswordVerificationResult
+Argon2id.PasswordHasher.AspNetCore.ServiceCollectionExtensions
+static Argon2id.PasswordHasher.AspNetCore.ServiceCollectionExtensions.AddArgon2idPasswordHasher<TUser>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Argon2id.PasswordHasher.Argon2idOptions? options = null, Argon2id.PasswordHasher.PepperRing? pepper = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

@@ -1,0 +1,48 @@
+name: Feature request
+description: Propose a change or addition to Argon2id.PasswordHasher.
+title: "[feat] "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This library is intentionally small. Before proposing a feature, please
+        read [`KNOWN-GAPS.md`](../../blob/main/KNOWN-GAPS.md) for things that are
+        deliberately out of scope, and `CLAUDE.md` for the design principles.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the user-facing problem, not just the proposed API.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API or behavior
+      description: |
+        Rough sketch of the API surface or behavior. Smaller is better — the
+        public surface is intentionally minimal.
+      render: csharp
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds you've tried, or why an existing API doesn't fit.
+
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Does this belong at the hashing layer?
+      description: |
+        Some requests (rate limiting, lockout, breached-password checks, MFA) belong
+        in the application or identity stack, not in a password-hashing library.
+      options:
+        - "Yes — it's about producing or verifying a hash"
+        - "Unsure"
+        - "Probably belongs in an identity / application layer"
+    validations:
+      required: true

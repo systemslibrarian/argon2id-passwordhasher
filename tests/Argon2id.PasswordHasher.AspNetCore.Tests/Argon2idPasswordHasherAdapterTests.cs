@@ -1,8 +1,8 @@
-using Argon2id.PasswordHasher;
-using Argon2id.PasswordHasher.AspNetCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+
+using CoreHasher = Argon2id.PasswordHasher.Argon2idPasswordHasher;
 
 namespace Argon2id.PasswordHasher.AspNetCore.Tests;
 
@@ -25,7 +25,7 @@ public class Argon2idPasswordHasherAdapterTests
     };
 
     private static Argon2idPasswordHasher<TestUser> Adapter(Argon2idOptions options) =>
-        new(new PasswordHasher(options));
+        new(new CoreHasher(options));
 
     private static readonly TestUser User = new();
 
@@ -78,8 +78,8 @@ public class Argon2idPasswordHasherAdapterTests
         Assert.IsType<Argon2idPasswordHasher<TestUser>>(resolved);
 
         // The shared core hasher is registered as a singleton.
-        var core1 = provider.GetRequiredService<PasswordHasher>();
-        var core2 = provider.GetRequiredService<PasswordHasher>();
+        var core1 = provider.GetRequiredService<CoreHasher>();
+        var core2 = provider.GetRequiredService<CoreHasher>();
         Assert.Same(core1, core2);
 
         string hash = resolved.HashPassword(User, "pw");

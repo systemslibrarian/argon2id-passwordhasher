@@ -13,7 +13,7 @@ namespace Argon2id.PasswordHasher;
 /// <para>
 /// Every hash produced by this library stores its own parameters inside the
 /// resulting PHC string, so changing these values never breaks verification of
-/// existing hashes. Use <see cref="PasswordHasher.NeedsRehash"/> to detect and
+/// existing hashes. Use <see cref="Argon2idPasswordHasher.NeedsRehash"/> to detect and
 /// transparently upgrade older hashes on the next successful login.
 /// </para>
 /// </remarks>

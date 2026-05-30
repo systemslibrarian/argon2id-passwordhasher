@@ -1,0 +1,46 @@
+version: 2
+
+updates:
+  # NuGet package updates for every project's PackageReference list.
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - nuget
+    groups:
+      # Roll Microsoft runtime / framework packages together so the PR queue
+      # stays small. Security advisories are still surfaced individually.
+      microsoft-extensions:
+        patterns:
+          - "Microsoft.Extensions.*"
+          - "Microsoft.AspNetCore.*"
+      analyzers-and-build:
+        patterns:
+          - "Microsoft.CodeAnalysis.*"
+          - "Microsoft.SourceLink.*"
+      test-stack:
+        patterns:
+          - "Microsoft.NET.Test.Sdk"
+          - "xunit"
+          - "xunit.*"
+
+  # Keep GitHub Actions versions current (and pinned-tag-safe).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - github-actions
+    groups:
+      actions:
+        patterns:
+          - "*"

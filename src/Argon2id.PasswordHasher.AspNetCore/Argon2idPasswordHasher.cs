@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 
-// Alias the core hasher with a global-qualified name. The library's root namespace
-// (Argon2id.PasswordHasher) shares its final segment with the type name, so an
-// unqualified reference would be ambiguous inside this child namespace.
-using CoreHasher = global::Argon2id.PasswordHasher.PasswordHasher;
+// The adapter and the core type share a simple name (`Argon2idPasswordHasher`)
+// but differ in arity (`<TUser>` vs. non-generic). Alias the core type to keep
+// the two unambiguous inside this file.
+using CoreHasher = Argon2id.PasswordHasher.Argon2idPasswordHasher;
 
 namespace Argon2id.PasswordHasher.AspNetCore;
 

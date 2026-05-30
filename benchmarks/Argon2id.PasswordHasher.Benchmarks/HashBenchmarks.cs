@@ -1,7 +1,5 @@
 using BenchmarkDotNet.Attributes;
 
-using CoreHasher = global::Argon2id.PasswordHasher.PasswordHasher;
-
 namespace Argon2id.PasswordHasher.Benchmarks;
 
 /// <summary>
@@ -14,7 +12,7 @@ public class HashBenchmarks
 {
     private const string Password = "correct horse battery staple";
 
-    private CoreHasher _hasher = null!;
+    private Argon2idPasswordHasher _hasher = null!;
     private string _hash = string.Empty;
 
     /// <summary>Memory cost in KiB: OWASP minimum (19 MiB), library default (64 MiB), and a high setting (128 MiB).</summary>
@@ -28,7 +26,7 @@ public class HashBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        _hasher = new CoreHasher(new Argon2idOptions
+        _hasher = new Argon2idPasswordHasher(new Argon2idOptions
         {
             MemorySizeKib = MemoryKib,
             Iterations = Iterations,

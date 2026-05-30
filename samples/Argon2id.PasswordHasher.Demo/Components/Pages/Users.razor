@@ -1,0 +1,40 @@
+@page "/users"
+@rendermode InteractiveServer
+@inject InMemoryUserStore Store
+
+<PageTitle>Registered users — Argon2id.PasswordHasher demo</PageTitle>
+
+<h1>📊 Registered users</h1>
+
+<p class="lede">
+    Every user that has registered in this process. The PHC string contains
+    everything needed to verify the password later &#8212; algorithm, version,
+    work-factor parameters, salt, and tag.
+</p>
+
+@if (Store.AllUsers.Count == 0)
+{
+    <div class="callout callout-info">
+        No users yet. <a href="register">Register one</a> to see the stored hash.
+    </div>
+}
+else
+{
+    @foreach (DemoUser user in Store.AllUsers)
+    {
+        <section class="user-card">
+            <header class="user-card-header">
+                <h2>@user.Username</h2>
+                <span class="muted">registered @user.RegisteredAt.UtcDateTime.ToString("u")</span>
+            </header>
+
+            <h3>Stored value</h3>
+            <pre><code>@user.PasswordHash</code></pre>
+
+            @if (PhcBreakdown.TryParse(user.PasswordHash) is { } phc)
+            {
+                <PhcBreakdownView Breakdown="phc" />
+            }
+        </section>
+    }
+}

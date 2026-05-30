@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-using CoreHasher = global::Argon2id.PasswordHasher.PasswordHasher;
+using CoreHasher = Argon2id.PasswordHasher.Argon2idPasswordHasher;
 
 namespace Argon2id.PasswordHasher.AspNetCore;
 

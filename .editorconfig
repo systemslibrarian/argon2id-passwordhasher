@@ -1,0 +1,123 @@
+# EditorConfig — repo-wide style + analyzer rules.
+# https://editorconfig.org
+
+root = true
+
+# Defaults for every file.
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{md,markdown}]
+trim_trailing_whitespace = false
+
+[*.{yml,yaml,json}]
+indent_size = 2
+
+[*.{csproj,props,targets,xml,slnx}]
+indent_size = 2
+
+# ---------------------------------------------------------------------------
+# C# style + analyzer settings
+# ---------------------------------------------------------------------------
+[*.cs]
+indent_size = 4
+tab_width = 4
+end_of_line = lf
+
+# Organize usings
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+
+# Prefer file-scoped namespaces (matches existing source).
+csharp_style_namespace_declarations = file_scoped:warning
+
+# `this.` usage — discouraged.
+dotnet_style_qualification_for_field = false:warning
+dotnet_style_qualification_for_property = false:warning
+dotnet_style_qualification_for_method = false:warning
+dotnet_style_qualification_for_event = false:warning
+
+# Language keywords over BCL type names (`int` not `Int32`).
+dotnet_style_predefined_type_for_locals_parameters_members = true:warning
+dotnet_style_predefined_type_for_member_access = true:warning
+
+# Modifiers
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+csharp_preferred_modifier_order = public,private,protected,internal,file,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,required,volatile,async:warning
+
+# `var` usage — explicit type when not apparent.
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+
+# Expression-bodied members
+csharp_style_expression_bodied_methods = when_on_single_line:silent
+csharp_style_expression_bodied_constructors = when_on_single_line:silent
+csharp_style_expression_bodied_properties = true:silent
+
+# Braces — always require for if/else/while/etc.
+csharp_prefer_braces = true:warning
+
+# Pattern matching / language features
+csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
+csharp_style_pattern_matching_over_as_with_null_check = true:suggestion
+csharp_style_prefer_pattern_matching = true:suggestion
+csharp_style_prefer_switch_expression = true:suggestion
+
+# Null checking
+csharp_style_throw_expression = true:suggestion
+csharp_style_conditional_delegate_call = true:suggestion
+
+# Newlines
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_new_line_before_members_in_object_initializers = true
+csharp_new_line_before_members_in_anonymous_types = true
+csharp_new_line_between_query_expression_clauses = true
+
+# ---------------------------------------------------------------------------
+# Analyzer rule severities (security-focused library)
+# ---------------------------------------------------------------------------
+
+# Public API analyzer — must declare every public API in PublicAPI.Shipped.txt
+# / PublicAPI.Unshipped.txt. Treat as warnings so accidental surface changes
+# break the build (we run TreatWarningsAsErrors).
+dotnet_diagnostic.RS0016.severity = warning  # symbol not part of declared public API
+dotnet_diagnostic.RS0017.severity = warning  # symbol declared in API surface no longer present
+dotnet_diagnostic.RS0022.severity = warning  # constructor make non-public
+dotnet_diagnostic.RS0024.severity = warning  # API contains duplicate entries
+dotnet_diagnostic.RS0025.severity = warning  # API requires sort
+dotnet_diagnostic.RS0026.severity = warning  # do not add overload with optional parameters
+dotnet_diagnostic.RS0027.severity = warning  # public api with optional parameter should have most parameters non-optional
+dotnet_diagnostic.RS0036.severity = warning  # API enable nullable
+dotnet_diagnostic.RS0037.severity = warning  # API enable nullable should be in unshipped
+
+# Quality rules we explicitly care about.
+dotnet_diagnostic.CA1062.severity = warning  # validate parameters of public methods
+dotnet_diagnostic.CA1303.severity = none     # localized strings not relevant
+dotnet_diagnostic.CA1305.severity = warning  # IFormatProvider
+dotnet_diagnostic.CA1307.severity = warning  # StringComparison
+dotnet_diagnostic.CA1308.severity = warning  # ToUpperInvariant over ToLowerInvariant
+dotnet_diagnostic.CA1310.severity = warning  # StringComparison
+dotnet_diagnostic.CA2007.severity = none     # ConfigureAwait — not an async library
+dotnet_diagnostic.CA5394.severity = none     # do not use insecure randomness — false positive on test fixtures
+
+# Style rules we want enforced repo-wide.
+dotnet_diagnostic.IDE0055.severity = warning # formatting
+dotnet_diagnostic.IDE0073.severity = none    # file header — not used
+
+# ---------------------------------------------------------------------------
+# Test projects relax a few naming rules.
+# ---------------------------------------------------------------------------
+[**/tests/**/*.cs]
+dotnet_diagnostic.CA1707.severity = none     # underscores in test names are idiomatic
+dotnet_diagnostic.CA1062.severity = none     # tests don't need null checks
+dotnet_diagnostic.RS0016.severity = none     # tests don't have a public API contract
+dotnet_diagnostic.RS0017.severity = none

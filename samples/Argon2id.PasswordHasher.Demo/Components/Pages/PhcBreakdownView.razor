@@ -1,0 +1,44 @@
+@* A read-only component that visualizes the parts of a PHC-encoded hash. *@
+
+<h3>What's inside the string</h3>
+
+<dl class="phc-grid">
+    <dt>Algorithm</dt>
+    <dd><code>@Breakdown.Algorithm</code> <span class="muted">— Argon2id (RFC 9106's recommended variant)</span></dd>
+
+    <dt>Version</dt>
+    <dd><code>@Breakdown.Version</code> <span class="muted">— Argon2 v1.3 encoded as 19 (0x13)</span></dd>
+
+    <dt>Memory cost</dt>
+    <dd><code>@Breakdown.MemoryCost</code> <span class="muted">— RAM per hash in KiB (memory hardness)</span></dd>
+
+    <dt>Time cost</dt>
+    <dd><code>@Breakdown.TimeCost</code> <span class="muted">— passes over memory (linear CPU cost)</span></dd>
+
+    <dt>Parallelism</dt>
+    <dd><code>@Breakdown.Parallelism</code> <span class="muted">— lanes / threads</span></dd>
+
+    @if (Breakdown.KeyId is not null)
+    {
+        <dt>Key id</dt>
+        <dd><code>@Breakdown.KeyId</code> <span class="muted">— pepper identifier (PHC extension)</span></dd>
+    }
+
+    <dt>Salt (base64)</dt>
+    <dd><code class="wrap">@Breakdown.SaltBase64</code> <span class="muted">— 128 bits of fresh randomness</span></dd>
+
+    <dt>Tag (base64)</dt>
+    <dd><code class="wrap">@Breakdown.HashBase64</code> <span class="muted">— 256-bit derived hash</span></dd>
+</dl>
+
+<p class="muted">
+    Everything verification needs is in this one string. To raise the work
+    factor later, just change your defaults &#8212; old hashes keep validating
+    with their original parameters, and <code>NeedsRehash</code> tells you
+    when to upgrade them on the next login.
+</p>
+
+@code {
+    [Parameter, EditorRequired]
+    public PhcBreakdown Breakdown { get; set; } = default!;
+}

@@ -6,13 +6,46 @@ on:
   pull_request:
     branches: [ main ]
 
+# Least-privilege by default. Individual jobs widen this only when needed.
 permissions:
   contents: read
 
+# Cancel superseded runs for the same ref so PRs don't fan out.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-test:
-    name: Build & Test
+  format:
+    name: dotnet format
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Verify formatting + style
+        # Fails the build if any file would be modified by `dotnet format`.
+        # This catches forgotten editorconfig adherence in PRs.
+        run: dotnet format --verify-no-changes --no-restore --severity warn
+
+  build-test:
+    name: Build & Test (${{ matrix.os }})
+    needs: format
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
@@ -20,10 +53,52 @@ jobs:
         with:
           fetch-depth: 0 # full history so SourceLink/deterministic builds work
 
-      - name: Setup .NET 10
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: global.json
+          # The library also targets net8.0 + net9.0; install those runtimes so
+          # the test host can spin up across every TFM.
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build (warnings = errors via Directory.Build.props)
+        run: dotnet build -c Release --no-restore -warnaserror
+
+      - name: Test (all TFMs)
+        run: dotnet test -c Release --no-build --logger "trx;LogFileName=test-results.trx" --results-directory ${{ github.workspace }}/TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: ${{ github.workspace }}/TestResults/**/*.trx
+          retention-days: 14
+
+  pack:
+    name: Pack (verification)
+    needs: build-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
 
       - name: Restore
         run: dotnet restore
@@ -31,5 +106,16 @@ jobs:
       - name: Build
         run: dotnet build -c Release --no-restore
 
-      - name: Test
-        run: dotnet test -c Release --no-build --verbosity normal
+      - name: Pack both packages
+        # Produces .nupkg + .snupkg per project. This is a verification pack —
+        # the Release workflow handles the actual NuGet push.
+        run: |
+          dotnet pack src/Argon2id.PasswordHasher/Argon2id.PasswordHasher.csproj -c Release --no-build -o artifacts
+          dotnet pack src/Argon2id.PasswordHasher.AspNetCore/Argon2id.PasswordHasher.AspNetCore.csproj -c Release --no-build -o artifacts
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkgs
+          path: artifacts/*.*nupkg
+          retention-days: 14

@@ -1,0 +1,83 @@
+@page "/"
+
+<PageTitle>Overview — Argon2id.PasswordHasher demo</PageTitle>
+
+<h1>🔐 Argon2id.PasswordHasher demo</h1>
+
+<p class="lede">
+    A minimal, runnable demonstration of the <code>Argon2id.PasswordHasher</code>
+    library. Walk through user registration and login while seeing exactly what
+    the library stores on your behalf.
+</p>
+
+<div class="callout callout-info">
+    <strong>This is a demo, not a starter template.</strong> Users live in
+    process memory and disappear on restart. Hash internals are shown on
+    screen so you can <em>see</em> what's happening &#8212; a real application
+    would never display these values.
+</div>
+
+<h2>Try it</h2>
+
+<ol class="steps">
+    <li>
+        <a href="register" class="step-link">
+            <span class="step-number">1</span>
+            <span>
+                <strong>Register</strong> a new account.
+                The library hashes the password with the default secure parameters
+                (64 MiB / t=3 / p=1) and returns a self-describing PHC string.
+            </span>
+        </a>
+    </li>
+    <li>
+        <a href="login" class="step-link">
+            <span class="step-number">2</span>
+            <span>
+                <strong>Log in</strong> with the same username and password.
+                The library re-runs Argon2id over the stored salt and compares
+                the result in constant time.
+            </span>
+        </a>
+    </li>
+    <li>
+        <a href="users" class="step-link">
+            <span class="step-number">3</span>
+            <span>
+                <strong>Inspect</strong> the stored hash strings.
+                See the algorithm, version, work-factor parameters, salt, and
+                tag, all packed into a single column-friendly value.
+            </span>
+        </a>
+    </li>
+</ol>
+
+<h2>What the library is doing</h2>
+
+<p>
+    Hashing happens with one call. The hasher is registered as a
+    <code>singleton</code> in <code>Program.cs</code> &#8212; it is stateless and
+    thread-safe by design:
+</p>
+
+<pre><code class="lang-csharp">// Program.cs
+builder.Services.AddSingleton(new Argon2idPasswordHasher());
+
+// During registration
+string stored = hasher.HashPassword(password);
+// $argon2id$v=19$m=65536,t=3,p=1$&lt;salt&gt;$&lt;hash&gt;
+
+// During login
+bool ok = hasher.VerifyPassword(password, stored);
+
+// Optional: upgrade old hashes when parameters change
+if (hasher.NeedsRehash(stored))
+    stored = hasher.HashPassword(password);
+</code></pre>
+
+<p>
+    Every hash contains its own parameters, so you can raise the work factor
+    later without breaking existing users. See
+    <a href="https://github.com/systemslibrarian/argon2id-passwordhasher#readme" target="_blank" rel="noopener">the
+        full README</a> for the design rationale and complete API.
+</p>
