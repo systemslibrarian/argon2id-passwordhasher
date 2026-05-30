@@ -61,8 +61,13 @@ The library is shipped with several measures designed to make tampering visible:
   dependencies.
 - **CodeQL** weekly scans for security-and-quality issues.
 - **Build-provenance attestations** (`actions/attest-build-provenance`) for
-  every published `.nupkg`/`.snupkg`. Consumers can verify with
+  every published `.nupkg`/`.snupkg` AND every SBOM. Consumers can verify with
   `gh attestation verify <file> --repo systemslibrarian/argon2id-passwordhasher`.
+- **CycloneDX SBOMs** generated per package on every release, attached to the
+  GitHub Release as `Argon2id.PasswordHasher.cyclonedx.json` and
+  `Argon2id.PasswordHasher.AspNetCore.cyclonedx.json`. Pull them into your
+  allowlisting/vulnerability-tracking pipeline.
+- **OpenSSF Scorecard** weekly + per-push grading of supply-chain hygiene.
 - **Locked public API surface** via `Microsoft.CodeAnalysis.PublicApiAnalyzers`,
   so unintended surface changes break the build.
 

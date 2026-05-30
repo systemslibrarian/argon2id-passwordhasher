@@ -90,11 +90,22 @@ public" at any given commit.
 
 ## 10. No NuGet code-signing certificate (yet)
 
-Packages are deterministic, published with SourceLink, and carry build-provenance
-attestations. They are **not** yet signed with an Authenticode / NuGet author-key
-certificate. Verify integrity with
+Packages are deterministic, published with SourceLink, accompanied by
+CycloneDX SBOMs, and carry build-provenance attestations on both the
+`.nupkg` and the SBOM. They are **not** yet signed with an Authenticode
+/ NuGet author-key certificate. Verify integrity with
 `gh attestation verify <file> --repo systemslibrarian/argon2id-passwordhasher`
 in the interim.
+
+## 11. No independent third-party audit (yet)
+
+The library has a published [threat model](THREAT-MODEL.md), a public
+[compliance posture](COMPLIANCE.md), and is continuously scanned by
+CodeQL + OpenSSF Scorecard. It has **not** yet been audited by an
+independent cryptographic-review firm. This is on the roadmap and is
+the most-asked-about gap during enterprise procurement; pre-audit, the
+library should be treated as a high-quality open-source dependency
+rather than a vendor-attested platform component.
 
 ---
 
