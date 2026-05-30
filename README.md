@@ -464,8 +464,9 @@ docs/                                      tuning & design notes
 ```
 
 CI builds and tests on every push/PR across Ubuntu, Windows, and macOS for all three TFMs.
-CodeQL scans run weekly. Tagged releases (`v*`) pack and publish both packages with build-provenance
-attestations.
+CodeQL scans run weekly. Tagged releases (`v*`) pack both packages, generate CycloneDX SBOMs,
+issue build-provenance attestations, and create a GitHub Release with all artifacts attached.
+**NuGet publication is a separate manual CLI step** — see [`PUBLISHING.md`](PUBLISHING.md).
 
 ## Versioning & status
 

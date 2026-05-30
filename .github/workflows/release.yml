@@ -1,8 +1,15 @@
 name: Release
 
-# Packs and publishes both packages to NuGet when a version tag is pushed, e.g.:
+# Builds, tests, packs, generates SBOMs + build-provenance attestations, and
+# creates a GitHub Release with all artifacts attached — when a version tag
+# is pushed, e.g.:
 #   git tag v0.4.0-preview.1 && git push origin v0.4.0-preview.1
-# Requires a repository secret named NUGET_API_KEY.
+#
+# This workflow does NOT push to NuGet.org. NuGet publication is intentionally
+# a manual CLI step performed from a maintainer's workstation so the operator
+# can inspect the packaged artifacts before they go public. The packaged
+# .nupkg / .snupkg files are attached to the GitHub Release for download, and
+# the local procedure is documented in PUBLISHING.md.
 
 on:
   push:
@@ -48,8 +55,8 @@ jobs:
       - name: Test
         run: dotnet test -c Release --no-build
 
-  publish:
-    name: Pack & Publish to NuGet
+  package:
+    name: Pack & attest
     needs: test
     runs-on: ubuntu-latest
     permissions:
@@ -105,22 +112,14 @@ jobs:
             --filename Argon2id.PasswordHasher.AspNetCore.cyclonedx.json
 
       - name: Generate build provenance attestations
-        # SLSA-style provenance for every nupkg/snupkg AND every SBOM we
-        # publish. Consumers verify with `gh attestation verify <file>`.
+        # SLSA-style provenance for every nupkg/snupkg AND every SBOM.
+        # Consumers (and the maintainer prior to NuGet push) verify with
+        # `gh attestation verify <file> --repo <owner>/<repo>`.
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
             artifacts/*.*nupkg
             sbom/*.json
-
-      - name: Publish to NuGet
-        # --skip-duplicate makes the workflow idempotent if a tag is re-pushed.
-        # The wildcard picks up both .nupkg and .snupkg.
-        run: |
-          dotnet nuget push "artifacts/*.nupkg" \
-            --api-key "${{ secrets.NUGET_API_KEY }}" \
-            --source https://api.nuget.org/v3/index.json \
-            --skip-duplicate
 
       - name: Upload artifacts to workflow run
         uses: actions/upload-artifact@v4
@@ -132,6 +131,9 @@ jobs:
           retention-days: 90
 
       - name: Create GitHub Release
+        # NuGet publication is intentionally NOT done here — see PUBLISHING.md.
+        # The release notes call out the manual-push step explicitly so a
+        # maintainer never assumes "tagged == published".
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -139,8 +141,23 @@ jobs:
           if [[ "${{ github.ref_name }}" == *-* ]]; then
             PRERELEASE_FLAG="--prerelease"
           fi
+          NOTES_FILE="$(mktemp)"
+          cat > "$NOTES_FILE" <<'NOTES'
+## Status
+
+This GitHub Release contains the packaged artifacts and provenance
+attestations for the tagged version.
+
+**NuGet publication is a separate, manual CLI step.** Until a maintainer
+runs the push from a workstation, these packages are NOT yet available
+on nuget.org. See [PUBLISHING.md](../blob/main/PUBLISHING.md) for the
+procedure.
+
+## Auto-generated notes
+NOTES
           gh release create "${{ github.ref_name }}" \
             artifacts/*.nupkg artifacts/*.snupkg sbom/*.json \
             --title "${{ github.ref_name }}" \
+            --notes-file "$NOTES_FILE" \
             --generate-notes \
             $PRERELEASE_FLAG

@@ -91,8 +91,12 @@ There is no fixed cadence. Releases happen when:
 
 Expect one to four releases per quarter on average. Tags are pushed
 with the version prefix `v` (e.g. `v0.4.0-preview.1`); the
-[Release workflow](.github/workflows/release.yml) handles pack,
-publish, and provenance attestation.
+[Release workflow](.github/workflows/release.yml) handles the matrix
+test, pack, SBOM generation, provenance attestation, and creation of
+the GitHub Release with all artifacts attached. **NuGet publication is
+a separate, deliberately-manual CLI step** performed from a
+maintainer's workstation after artifact review — see
+[`PUBLISHING.md`](PUBLISHING.md) for the procedure.
 
 ## How to ask for help
 
