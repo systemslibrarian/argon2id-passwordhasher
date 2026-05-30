@@ -258,6 +258,10 @@ var rotated = new PepperRing(
 > The library never persists pepper keys — that's your responsibility. **Lose the active key and
 > you lose the ability to verify hashes made with it.** Back up and retire keys deliberately.
 
+For end-to-end examples of loading peppers from **Azure Key Vault, AWS Secrets Manager,
+Google Cloud Secret Manager, HashiCorp Vault**, or environment variables, plus the full
+rotation playbook, see [`docs/pepper-key-management.md`](docs/pepper-key-management.md).
+
 ## ASP.NET Core Identity
 
 Install `Argon2id.PasswordHasher.AspNetCore` and register the hasher in one line:
