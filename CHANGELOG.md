@@ -25,6 +25,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   drift in `index.html` fails the workflow loudly instead of silently
   publishing 404s.
 
+### Added (docs)
+
+- **DocFx-generated API documentation site** lives under
+  `https://systemslibrarian.github.io/argon2id-passwordhasher/docs/`,
+  co-published with the WASM demo via the same Pages workflow. Every
+  public type + member, generated from the source XML doc comments,
+  filtered to match `PublicAPI.Shipped.txt`.
+
+### Added (CI / supply chain)
+
+- **OpenSSF Scorecard** workflow (`.github/workflows/scorecard.yml`) runs
+  weekly + on push, uploads SARIF to GitHub Security, and publishes the
+  numeric score to the README badge. Grades maintained status, branch
+  protection, dangerous workflow patterns, pinned dependencies, signed
+  releases, and more.
+- **README badges** for Pages deploy status and OpenSSF Scorecard score
+  alongside the existing CI / CodeQL ones.
+
 ### Added (samples)
 
 - The WebAssembly demo now enables multi-threaded WASM

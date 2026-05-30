@@ -1,0 +1,5 @@
+# DocFx generates the API yml/md here at build time. Don't commit the output;
+# regenerate from the XML doc comments on every build.
+*.yml
+!toc.yml
+*.manifest

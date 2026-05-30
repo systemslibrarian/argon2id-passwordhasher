@@ -45,6 +45,7 @@ fits what you want to show:
 | Sample | Where it runs | When to use it |
 | --- | --- | --- |
 | [**Live WASM demo**](https://systemslibrarian.github.io/argon2id-passwordhasher/) | In your browser, no install | Quickest way to try the library. Hashing runs on your CPU via WebAssembly. Auto-deployed to GitHub Pages on every push. |
+| [**API documentation**](https://systemslibrarian.github.io/argon2id-passwordhasher/docs/) | DocFx, browser | Every public type + member, generated from XML doc comments. Co-published with the live demo. |
 | [`samples/Argon2id.PasswordHasher.Demo`](samples/Argon2id.PasswordHasher.Demo) | Blazor Server (local) | Shows production-shape integration: DI, antiforgery, rate limiting, HSTS, CSP, constant-time login, memory-cost DoS gate. |
 | [`samples/Argon2id.PasswordHasher.WasmDemo`](samples/Argon2id.PasswordHasher.WasmDemo) | Blazor WebAssembly (local) | Same UX as the live demo, but running against the in-tree library. Edit and refresh. |
 

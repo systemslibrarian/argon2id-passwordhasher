@@ -1,0 +1,47 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "../src",
+          "files": [ "**/*.csproj" ]
+        }
+      ],
+      "dest": "api",
+      "outputFormat": "mref",
+      "memberLayout": "samePage",
+      "namespaceLayout": "nested",
+      "filter": "filter.yml"
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": [ "api/**.{md,yml}" ]
+      },
+      {
+        "files": [ "*.md", "**/toc.yml" ],
+        "exclude": [ "_site/**" ]
+      }
+    ],
+    "resource": [
+      {
+        "files": [ "images/**" ]
+      }
+    ],
+    "output": "_site",
+    "template": [ "default", "modern" ],
+    "globalMetadata": {
+      "_appTitle": "Argon2id.PasswordHasher",
+      "_appName": "Argon2id.PasswordHasher",
+      "_appFooter": "© Paul Clark · MIT · <a href=\"https://github.com/systemslibrarian/argon2id-passwordhasher\">GitHub</a>",
+      "_enableSearch": true,
+      "_disableContribution": false,
+      "_gitContribute": {
+        "repo": "https://github.com/systemslibrarian/argon2id-passwordhasher",
+        "branch": "main"
+      }
+    }
+  }
+}

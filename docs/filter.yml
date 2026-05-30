@@ -1,0 +1,10 @@
+# DocFx API-metadata filter. Excludes anything that isn't part of the
+# public surface so the generated reference matches PublicAPI.Shipped.txt.
+apiRules:
+  - exclude:
+      uidRegex: ^System\.
+  - exclude:
+      hasAttribute:
+        uid: System.Runtime.CompilerServices.CompilerGeneratedAttribute
+  - exclude:
+      uidRegex: ^Argon2id\.PasswordHasher\..*\.PhcString
