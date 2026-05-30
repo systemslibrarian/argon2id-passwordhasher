@@ -23,6 +23,9 @@ Argon2id.PasswordHasher.Argon2idPasswordHasher.HashPassword(System.ReadOnlySpan<
 Argon2id.PasswordHasher.Argon2idPasswordHasher.HashPassword(string! password) -> string!
 Argon2id.PasswordHasher.Argon2idPasswordHasher.NeedsRehash(string! encodedHash) -> bool
 Argon2id.PasswordHasher.Argon2idPasswordHasher.Options.get -> Argon2id.PasswordHasher.Argon2idOptions!
+Argon2id.PasswordHasher.Argon2idPasswordHasher.Verify(System.ReadOnlySpan<byte> password, string! encodedHash) -> Argon2id.PasswordHasher.VerifyResult
+Argon2id.PasswordHasher.Argon2idPasswordHasher.Verify(System.ReadOnlySpan<char> password, string! encodedHash) -> Argon2id.PasswordHasher.VerifyResult
+Argon2id.PasswordHasher.Argon2idPasswordHasher.Verify(string! password, string! encodedHash) -> Argon2id.PasswordHasher.VerifyResult
 Argon2id.PasswordHasher.Argon2idPasswordHasher.VerifyPassword(System.ReadOnlySpan<byte> password, string! encodedHash) -> bool
 Argon2id.PasswordHasher.Argon2idPasswordHasher.VerifyPassword(System.ReadOnlySpan<char> password, string! encodedHash) -> bool
 Argon2id.PasswordHasher.Argon2idPasswordHasher.VerifyPassword(string! password, string! encodedHash) -> bool
@@ -32,9 +35,24 @@ Argon2id.PasswordHasher.Pepper.Pepper(string! id, byte[]! key) -> void
 Argon2id.PasswordHasher.PepperRing
 Argon2id.PasswordHasher.PepperRing.Active.get -> Argon2id.PasswordHasher.Pepper!
 Argon2id.PasswordHasher.PepperRing.PepperRing(Argon2id.PasswordHasher.Pepper! active, params Argon2id.PasswordHasher.Pepper![]! retired) -> void
+Argon2id.PasswordHasher.VerifyResult
+Argon2id.PasswordHasher.VerifyResult.Deconstruct(out bool Success, out bool NeedsRehash) -> void
+Argon2id.PasswordHasher.VerifyResult.Equals(Argon2id.PasswordHasher.VerifyResult other) -> bool
+Argon2id.PasswordHasher.VerifyResult.NeedsRehash.get -> bool
+Argon2id.PasswordHasher.VerifyResult.NeedsRehash.init -> void
+Argon2id.PasswordHasher.VerifyResult.Success.get -> bool
+Argon2id.PasswordHasher.VerifyResult.Success.init -> void
+Argon2id.PasswordHasher.VerifyResult.VerifyResult() -> void
+Argon2id.PasswordHasher.VerifyResult.VerifyResult(bool Success, bool NeedsRehash) -> void
 override Argon2id.PasswordHasher.Argon2idOptions.Equals(object? obj) -> bool
 override Argon2id.PasswordHasher.Argon2idOptions.GetHashCode() -> int
 override Argon2id.PasswordHasher.Argon2idOptions.ToString() -> string!
+~override Argon2id.PasswordHasher.VerifyResult.Equals(object obj) -> bool
+override Argon2id.PasswordHasher.VerifyResult.GetHashCode() -> int
+~override Argon2id.PasswordHasher.VerifyResult.ToString() -> string
 static Argon2id.PasswordHasher.Argon2idOptions.Recommended.get -> Argon2id.PasswordHasher.Argon2idOptions!
 static Argon2id.PasswordHasher.Argon2idOptions.operator !=(Argon2id.PasswordHasher.Argon2idOptions? left, Argon2id.PasswordHasher.Argon2idOptions? right) -> bool
 static Argon2id.PasswordHasher.Argon2idOptions.operator ==(Argon2id.PasswordHasher.Argon2idOptions? left, Argon2id.PasswordHasher.Argon2idOptions? right) -> bool
+static Argon2id.PasswordHasher.VerifyResult.Failed.get -> Argon2id.PasswordHasher.VerifyResult
+static Argon2id.PasswordHasher.VerifyResult.operator !=(Argon2id.PasswordHasher.VerifyResult left, Argon2id.PasswordHasher.VerifyResult right) -> bool
+static Argon2id.PasswordHasher.VerifyResult.operator ==(Argon2id.PasswordHasher.VerifyResult left, Argon2id.PasswordHasher.VerifyResult right) -> bool

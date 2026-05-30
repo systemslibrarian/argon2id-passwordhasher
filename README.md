@@ -318,10 +318,17 @@ bool   VerifyPassword(string password, string encodedHash)
 bool   VerifyPassword(ReadOnlySpan<char> password, string encodedHash)
 bool   VerifyPassword(ReadOnlySpan<byte> password, string encodedHash)
 
+VerifyResult Verify(string password, string encodedHash)           // single-parse: returns Success + NeedsRehash
+VerifyResult Verify(ReadOnlySpan<char> password, string encodedHash)
+VerifyResult Verify(ReadOnlySpan<byte> password, string encodedHash)
+
 bool   NeedsRehash(string encodedHash)
 
 Argon2idOptions Options { get; }
 ```
+
+**`VerifyResult`** (readonly record struct) — `Success`, `NeedsRehash`,
+`static Failed`. Returned by `Verify(...)`.
 
 **`Argon2idOptions`** (record) — `MemorySizeKib`, `Iterations`, `DegreeOfParallelism`,
 `SaltSizeBytes`, `HashSizeBytes`, `Validate()`, `static Recommended`.

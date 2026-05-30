@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`Argon2idPasswordHasher.Verify(...)`** overloads returning a new
+  **`VerifyResult`** readonly record struct (`Success`, `NeedsRehash`). Fuses
+  verify + needs-rehash into one call and parses the PHC string once instead of
+  twice. The existing `VerifyPassword(...)` and `NeedsRehash(...)` continue to
+  work and remain the right choice when you only need one piece of information.
+- The ASP.NET Core Identity adapter now uses `Verify(...)` internally, so
+  Identity's `PasswordVerificationResult.SuccessRehashNeeded` path runs with
+  half the PHC parsing work.
+
+### Changed
+
+- Hardened the GitHub Pages deploy step: the `<base href>` rewrite now
+  pre- and post-asserts the substitution actually happened, so any future
+  drift in `index.html` fails the workflow loudly instead of silently
+  publishing 404s.
+
+### Added (samples)
+
+- The WebAssembly demo now enables multi-threaded WASM
+  (`WasmEnableThreads=true`) and offloads hashing via `Task.Run`, so the UI
+  stays responsive during Argon2. A minimal in-tree
+  `wwwroot/coi-serviceworker.js` provides the cross-origin isolation that
+  multi-threaded WASM requires on GitHub Pages.
+
 ## [0.3.0-preview.1] — 2026-05-30
 
 ### Breaking changes

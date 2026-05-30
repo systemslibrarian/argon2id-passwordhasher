@@ -128,7 +128,7 @@ public sealed class Argon2idPasswordHasher
     /// available &#8212; return <see langword="false"/> rather than throwing.
     /// </returns>
     public bool VerifyPassword(string password, string encodedHash) =>
-        VerifyPassword(password.AsSpan(), encodedHash);
+        Verify(password.AsSpan(), encodedHash).Success;
 
     /// <summary>
     /// Verifies a password supplied as a span of characters against a stored PHC hash.
@@ -136,15 +136,8 @@ public sealed class Argon2idPasswordHasher
     /// <param name="password">The plaintext password to check.</param>
     /// <param name="encodedHash">The stored PHC string.</param>
     /// <returns><see langword="true"/> if the password matches; otherwise <see langword="false"/>.</returns>
-    public bool VerifyPassword(ReadOnlySpan<char> password, string encodedHash)
-    {
-        if (password.IsEmpty || !PhcString.TryParse(encodedHash, out _))
-        {
-            return false;
-        }
-
-        return VerifyAndZero(EncodeUtf8(password), encodedHash);
-    }
+    public bool VerifyPassword(ReadOnlySpan<char> password, string encodedHash) =>
+        Verify(password, encodedHash).Success;
 
     /// <summary>
     /// Verifies a password supplied as raw bytes against a stored PHC hash. The caller
@@ -153,14 +146,46 @@ public sealed class Argon2idPasswordHasher
     /// <param name="password">The plaintext password bytes to check.</param>
     /// <param name="encodedHash">The stored PHC string.</param>
     /// <returns><see langword="true"/> if the password matches; otherwise <see langword="false"/>.</returns>
-    public bool VerifyPassword(ReadOnlySpan<byte> password, string encodedHash)
+    public bool VerifyPassword(ReadOnlySpan<byte> password, string encodedHash) =>
+        Verify(password, encodedHash).Success;
+
+    /// <summary>
+    /// Verifies a password and, in one call, reports whether the stored hash should
+    /// be replaced with a fresh one. Parses the PHC string once; preferred over
+    /// calling <see cref="VerifyPassword(string, string)"/> and
+    /// <see cref="NeedsRehash(string)"/> separately.
+    /// </summary>
+    /// <param name="password">The plaintext password to check.</param>
+    /// <param name="encodedHash">The stored PHC string.</param>
+    /// <returns>
+    /// A <see cref="VerifyResult"/> whose <see cref="VerifyResult.Success"/> indicates
+    /// match and whose <see cref="VerifyResult.NeedsRehash"/> is <see langword="true"/>
+    /// only when the password matched and the stored parameters / pepper are weaker
+    /// than the hasher's current configuration.
+    /// </returns>
+    public VerifyResult Verify(string password, string encodedHash) =>
+        Verify(password.AsSpan(), encodedHash);
+
+    /// <inheritdoc cref="Verify(string, string)" />
+    public VerifyResult Verify(ReadOnlySpan<char> password, string encodedHash)
     {
-        if (password.IsEmpty || !PhcString.TryParse(encodedHash, out _))
+        if (password.IsEmpty || !PhcString.TryParse(encodedHash, out PhcString? parsed))
         {
-            return false;
+            return VerifyResult.Failed;
         }
 
-        return VerifyAndZero(password.ToArray(), encodedHash);
+        return VerifyAndZero(EncodeUtf8(password), parsed!);
+    }
+
+    /// <inheritdoc cref="Verify(string, string)" />
+    public VerifyResult Verify(ReadOnlySpan<byte> password, string encodedHash)
+    {
+        if (password.IsEmpty || !PhcString.TryParse(encodedHash, out PhcString? parsed))
+        {
+            return VerifyResult.Failed;
+        }
+
+        return VerifyAndZero(password.ToArray(), parsed!);
     }
 
     /// <summary>
@@ -175,9 +200,8 @@ public sealed class Argon2idPasswordHasher
     /// from the active pepper; otherwise <see langword="false"/>.
     /// </returns>
     /// <remarks>
-    /// The recommended pattern is: after <see cref="VerifyPassword(string, string)"/> returns
-    /// <see langword="true"/>, call this method and, if it also returns <see langword="true"/>,
-    /// replace the stored value with a fresh <see cref="HashPassword(string)"/> result.
+    /// Prefer <see cref="Verify(string, string)"/> when you also need to verify the
+    /// password &#8212; it parses the PHC string only once.
     /// </remarks>
     public bool NeedsRehash(string encodedHash)
     {
@@ -186,7 +210,12 @@ public sealed class Argon2idPasswordHasher
             return true;
         }
 
-        if (parsed!.MemorySizeKib < _options.MemorySizeKib
+        return NeedsRehashCore(parsed!);
+    }
+
+    private bool NeedsRehashCore(PhcString parsed)
+    {
+        if (parsed.MemorySizeKib < _options.MemorySizeKib
             || parsed.Iterations < _options.Iterations
             || parsed.DegreeOfParallelism < _options.DegreeOfParallelism
             || parsed.Hash.Length < _options.HashSizeBytes)
@@ -219,24 +248,18 @@ public sealed class Argon2idPasswordHasher
         }
     }
 
-    private bool VerifyAndZero(byte[] password, string encodedHash)
+    private VerifyResult VerifyAndZero(byte[] password, PhcString parsed)
     {
         byte[]? candidate = null;
         try
         {
-            // Re-parse here so all paths share a single parse; callers already confirmed it parses.
-            if (!PhcString.TryParse(encodedHash, out PhcString? parsed))
-            {
-                return false;
-            }
-
             byte[]? secret = null;
-            if (parsed!.KeyId is not null)
+            if (parsed.KeyId is not null)
             {
                 // The hash was peppered: we can only verify if we hold that pepper.
                 if (_pepper is null || !_pepper.TryGet(parsed.KeyId, out Pepper? pepper))
                 {
-                    return false;
+                    return VerifyResult.Failed;
                 }
 
                 secret = pepper.KnownSecret;
@@ -247,7 +270,12 @@ public sealed class Argon2idPasswordHasher
             candidate = Compute(password, parsed.Salt, parsed.MemorySizeKib,
                 parsed.Iterations, parsed.DegreeOfParallelism, parsed.Hash.Length, secret);
 
-            return CryptographicOperations.FixedTimeEquals(candidate, parsed.Hash);
+            if (!CryptographicOperations.FixedTimeEquals(candidate, parsed.Hash))
+            {
+                return VerifyResult.Failed;
+            }
+
+            return new VerifyResult(Success: true, NeedsRehash: NeedsRehashCore(parsed));
         }
         finally
         {

@@ -37,13 +37,14 @@ public sealed class Argon2idPasswordHasher<TUser> : IPasswordHasher<TUser>
     /// <inheritdoc />
     public PasswordVerificationResult VerifyHashedPassword(TUser user, string hashedPassword, string providedPassword)
     {
-        if (!_hasher.VerifyPassword(providedPassword, hashedPassword))
+        // Verify(...) returns both match-result and rehash-hint from a single
+        // PHC parse, so this is one parse + one Argon2 computation per call.
+        VerifyResult result = _hasher.Verify(providedPassword, hashedPassword);
+        return result switch
         {
-            return PasswordVerificationResult.Failed;
-        }
-
-        return _hasher.NeedsRehash(hashedPassword)
-            ? PasswordVerificationResult.SuccessRehashNeeded
-            : PasswordVerificationResult.Success;
+            { Success: false } => PasswordVerificationResult.Failed,
+            { NeedsRehash: true } => PasswordVerificationResult.SuccessRehashNeeded,
+            _ => PasswordVerificationResult.Success,
+        };
     }
 }
