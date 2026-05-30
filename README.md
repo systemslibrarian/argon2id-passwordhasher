@@ -7,6 +7,7 @@
 [![CI](https://github.com/systemslibrarian/argon2id-passwordhasher/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/systemslibrarian/argon2id-passwordhasher/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/systemslibrarian/argon2id-passwordhasher/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/systemslibrarian/argon2id-passwordhasher/actions/workflows/codeql.yml)
 [![Pages](https://github.com/systemslibrarian/argon2id-passwordhasher/actions/workflows/pages.yml/badge.svg?branch=main)](https://systemslibrarian.github.io/argon2id-passwordhasher/)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/systemslibrarian/argon2id-passwordhasher/badge)](https://securityscorecards.dev/viewer/?uri=github.com/systemslibrarian/argon2id-passwordhasher)
 [![NuGet](https://img.shields.io/nuget/vpre/Argon2id.PasswordHasher.svg?logo=nuget&label=Argon2id.PasswordHasher)](https://www.nuget.org/packages/Argon2id.PasswordHasher)
 [![NuGet (AspNetCore)](https://img.shields.io/nuget/vpre/Argon2id.PasswordHasher.AspNetCore.svg?logo=nuget&label=.AspNetCore)](https://www.nuget.org/packages/Argon2id.PasswordHasher.AspNetCore)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
