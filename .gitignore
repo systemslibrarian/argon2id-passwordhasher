@@ -11,6 +11,16 @@ artifacts/
 *.snupkg
 .nuget/
 
+# Local NuGet API keys — never commit. Used by `dotnet nuget push` from a
+# developer machine. The intentional repo location is .nuget-api-key at
+# the root; the broader patterns below protect against typos and aliases.
+.nuget-api-key
+nuget-api-key
+nuget.key
+*.nuget-key
+.apikeys
+secrets/
+
 # Test results
 [Tt]est[Rr]esults/
 *.trx
