@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`MigratingPasswordHasher<TUser>`** in the AspNetCore package — an
+  `IPasswordHasher<TUser>` that routes verification by format: any stored
+  value beginning with `$argon2id$` goes to the Argon2id path, everything
+  else (PBKDF2, null, garbage) to a configurable legacy hasher. Successful
+  legacy verifications return `SuccessRehashNeeded` so ASP.NET Core
+  Identity transparently upgrades the stored hash on the next sign-in.
+  Fail-safe on garbage input.
+- **`IdentityBuilder.AddArgon2idPasswordHasherWithMigration<TUser>()`** —
+  one-line DI registration that wires the migrating adapter on top of the
+  stock Identity PBKDF2 hasher. Optional `Action<Argon2idOptions>` overload.
+- **`MIGRATION.md`** end-to-end guide for switching an existing user store
+  from the default `PasswordHasher<TUser>` (or bcrypt, scrypt, or any
+  custom scheme) to Argon2id with zero downtime, zero forced resets, and
+  zero broken logins.
+- **`IdentityBuilder.AddArgon2idPasswordHasher<TUser>()`** chaining
+  extension — `builder.Services.AddIdentityCore<TUser>().AddArgon2idPasswordHasher<TUser>()`
+  reads more naturally than breaking out to `.Services`.
+- **`Pepper.FromHex(string, string)`** and **`Pepper.FromBase64(string, string)`**
+  static factories so vault/KMS-sourced secrets don't need
+  `Convert.FromHexString` boilerplate.
+- **`AddArgon2idPasswordHasher<TUser>(Action<Argon2idOptions>)`** overload
+  in the AspNetCore package — the standard .NET Options pattern, with
+  `IValidateOptions<Argon2idOptions>` for startup validation.
 - **`Argon2idPasswordHasher.Verify(...)`** overloads returning a new
   **`VerifyResult`** readonly record struct (`Success`, `NeedsRehash`). Fuses
   verify + needs-rehash into one call and parses the PHC string once instead of

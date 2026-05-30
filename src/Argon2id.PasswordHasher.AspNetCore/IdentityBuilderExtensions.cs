@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Argon2id.PasswordHasher.AspNetCore;
 
@@ -71,6 +72,80 @@ public static class IdentityBuilderExtensions
         ArgumentNullException.ThrowIfNull(configureOptions);
         EnsureUserTypeMatches<TUser>(builder);
         builder.Services.AddArgon2idPasswordHasher<TUser>(configureOptions);
+        return builder;
+    }
+
+    /// <summary>
+    /// Registers a <see cref="MigratingPasswordHasher{TUser}"/> as the
+    /// <see cref="IPasswordHasher{TUser}"/>, using Argon2id for new hashes and the
+    /// stock ASP.NET Core Identity <see cref="PasswordHasher{TUser}"/> (PBKDF2)
+    /// to verify any stored hash that isn't already Argon2id. Successful legacy
+    /// verifications return <see cref="PasswordVerificationResult.SuccessRehashNeeded"/>
+    /// so Identity transparently upgrades the stored value on the next sign-in.
+    /// </summary>
+    /// <remarks>
+    /// This is the recommended adapter when migrating an existing user store from
+    /// the default ASP.NET Core Identity PBKDF2 hasher to Argon2id. See
+    /// <c>MIGRATION.md</c> for the end-to-end story.
+    /// </remarks>
+    /// <typeparam name="TUser">The Identity user type.</typeparam>
+    /// <param name="builder">The Identity builder being configured.</param>
+    /// <returns>The same <paramref name="builder"/>, for chaining.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="builder"/> is null.</exception>
+    public static IdentityBuilder AddArgon2idPasswordHasherWithMigration<TUser>(
+        this IdentityBuilder builder)
+        where TUser : class
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        EnsureUserTypeMatches<TUser>(builder);
+
+        // Wire up the Argon2id hasher first so the migrating hasher has it.
+        builder.Services.AddArgon2idPasswordHasher<TUser>();
+
+        // Replace the default IPasswordHasher<TUser> registration with a
+        // factory that wraps Argon2idPasswordHasher<TUser> + the stock
+        // PasswordHasher<TUser> in a migrating adapter.
+        builder.Services.Replace(ServiceDescriptor.Singleton<IPasswordHasher<TUser>>(sp =>
+        {
+            var argon2id = new Argon2idPasswordHasher<TUser>(
+                sp.GetRequiredService<Argon2idPasswordHasher>());
+            var legacy = new PasswordHasher<TUser>();
+            return new MigratingPasswordHasher<TUser>(argon2id, legacy);
+        }));
+
+        return builder;
+    }
+
+    /// <summary>
+    /// <see cref="AddArgon2idPasswordHasherWithMigration{TUser}(IdentityBuilder)"/> with
+    /// inline configuration of the Argon2id options.
+    /// </summary>
+    /// <typeparam name="TUser">The Identity user type.</typeparam>
+    /// <param name="builder">The Identity builder being configured.</param>
+    /// <param name="configureOptions">Callback that mutates the Argon2id options.</param>
+    /// <returns>The same <paramref name="builder"/>, for chaining.</returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="builder"/> or <paramref name="configureOptions"/> is null.
+    /// </exception>
+    public static IdentityBuilder AddArgon2idPasswordHasherWithMigration<TUser>(
+        this IdentityBuilder builder,
+        Action<Argon2idOptions> configureOptions)
+        where TUser : class
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(configureOptions);
+        EnsureUserTypeMatches<TUser>(builder);
+
+        builder.Services.AddArgon2idPasswordHasher<TUser>(configureOptions);
+
+        builder.Services.Replace(ServiceDescriptor.Singleton<IPasswordHasher<TUser>>(sp =>
+        {
+            var argon2id = new Argon2idPasswordHasher<TUser>(
+                sp.GetRequiredService<Argon2idPasswordHasher>());
+            var legacy = new PasswordHasher<TUser>();
+            return new MigratingPasswordHasher<TUser>(argon2id, legacy);
+        }));
+
         return builder;
     }
 
