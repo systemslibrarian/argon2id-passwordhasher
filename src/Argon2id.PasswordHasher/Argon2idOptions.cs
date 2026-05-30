@@ -16,6 +16,12 @@ namespace Argon2id.PasswordHasher;
 /// existing hashes. Use <see cref="Argon2idPasswordHasher.NeedsRehash"/> to detect and
 /// transparently upgrade older hashes on the next successful login.
 /// </para>
+/// <para>
+/// Properties are settable to support the standard .NET Options pattern
+/// (<c>IOptions&lt;TOptions&gt;</c>) and binding from <c>IConfiguration</c>.
+/// Hashers treat their options as effectively immutable once constructed &#8212;
+/// do not mutate an <see cref="Argon2idOptions"/> instance after passing it to a hasher.
+/// </para>
 /// </remarks>
 public sealed record Argon2idOptions
 {
@@ -23,28 +29,28 @@ public sealed record Argon2idOptions
     /// Memory cost in kibibytes (KiB). Default: 65536 KiB (64&#160;MiB).
     /// Memory hardness is Argon2's primary defense against GPU/ASIC cracking.
     /// </summary>
-    public int MemorySizeKib { get; init; } = 65536;
+    public int MemorySizeKib { get; set; } = 65536;
 
     /// <summary>
     /// Time cost: the number of passes over memory. Default: 3.
     /// </summary>
-    public int Iterations { get; init; } = 3;
+    public int Iterations { get; set; } = 3;
 
     /// <summary>
     /// Degree of parallelism (number of lanes / threads). Default: 1.
     /// Kept low so per-hash CPU cost is predictable under concurrent load.
     /// </summary>
-    public int DegreeOfParallelism { get; init; } = 1;
+    public int DegreeOfParallelism { get; set; } = 1;
 
     /// <summary>
     /// Salt length in bytes. Default: 16 (128 bits), the RFC&#160;9106 recommendation.
     /// </summary>
-    public int SaltSizeBytes { get; init; } = 16;
+    public int SaltSizeBytes { get; set; } = 16;
 
     /// <summary>
     /// Derived hash (tag) length in bytes. Default: 32 (256 bits).
     /// </summary>
-    public int HashSizeBytes { get; init; } = 32;
+    public int HashSizeBytes { get; set; } = 32;
 
     /// <summary>
     /// The library's recommended defaults. Equivalent to <c>new Argon2idOptions()</c>.

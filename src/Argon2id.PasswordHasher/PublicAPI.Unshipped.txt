@@ -3,16 +3,16 @@ Argon2id.PasswordHasher.Argon2idOptions
 Argon2id.PasswordHasher.Argon2idOptions.Argon2idOptions() -> void
 Argon2id.PasswordHasher.Argon2idOptions.<Clone>$() -> Argon2id.PasswordHasher.Argon2idOptions!
 Argon2id.PasswordHasher.Argon2idOptions.DegreeOfParallelism.get -> int
-Argon2id.PasswordHasher.Argon2idOptions.DegreeOfParallelism.init -> void
+Argon2id.PasswordHasher.Argon2idOptions.DegreeOfParallelism.set -> void
 Argon2id.PasswordHasher.Argon2idOptions.Equals(Argon2id.PasswordHasher.Argon2idOptions? other) -> bool
 Argon2id.PasswordHasher.Argon2idOptions.HashSizeBytes.get -> int
-Argon2id.PasswordHasher.Argon2idOptions.HashSizeBytes.init -> void
+Argon2id.PasswordHasher.Argon2idOptions.HashSizeBytes.set -> void
 Argon2id.PasswordHasher.Argon2idOptions.Iterations.get -> int
-Argon2id.PasswordHasher.Argon2idOptions.Iterations.init -> void
+Argon2id.PasswordHasher.Argon2idOptions.Iterations.set -> void
 Argon2id.PasswordHasher.Argon2idOptions.MemorySizeKib.get -> int
-Argon2id.PasswordHasher.Argon2idOptions.MemorySizeKib.init -> void
+Argon2id.PasswordHasher.Argon2idOptions.MemorySizeKib.set -> void
 Argon2id.PasswordHasher.Argon2idOptions.SaltSizeBytes.get -> int
-Argon2id.PasswordHasher.Argon2idOptions.SaltSizeBytes.init -> void
+Argon2id.PasswordHasher.Argon2idOptions.SaltSizeBytes.set -> void
 Argon2id.PasswordHasher.Argon2idOptions.Validate() -> void
 Argon2id.PasswordHasher.Argon2idPasswordHasher
 Argon2id.PasswordHasher.Argon2idPasswordHasher.Argon2idPasswordHasher() -> void
