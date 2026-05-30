@@ -14,6 +14,14 @@
     <link rel="stylesheet" href="app.css" />
     <link rel="icon" href="data:," />
     <link href="Argon2id.PasswordHasher.WasmDemo.styles.css" rel="stylesheet" />
+
+    <!--
+        Cross-origin isolation helper: enables SharedArrayBuffer (and therefore
+        multi-threaded WebAssembly) on hosts that can't set COOP/COEP headers
+        themselves, like GitHub Pages. Without it, the Blazor runtime falls
+        back to a single thread and the hash freezes the UI. See coi-serviceworker.js.
+    -->
+    <script src="coi-serviceworker.js"></script>
 </head>
 
 <body>

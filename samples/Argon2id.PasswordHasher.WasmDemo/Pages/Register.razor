@@ -91,8 +91,12 @@
                 return;
             }
 
+            // Push hashing onto a worker thread so the UI stays responsive.
+            // When multi-threaded WASM is active (WasmEnableThreads + COI),
+            // Task.Run actually lands on a worker. In single-threaded WASM it
+            // still yields to the scheduler, which is the best we can do.
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            string hash = Hasher.HashPassword(password);
+            string hash = await Task.Run(() => Hasher.HashPassword(password));
             sw.Stop();
 
             Users.TryAdd(new DemoUser(username, hash, DateTimeOffset.UtcNow));

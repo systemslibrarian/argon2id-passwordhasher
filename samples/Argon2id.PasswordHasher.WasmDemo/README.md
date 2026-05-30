@@ -46,6 +46,29 @@ computation that burns ~64 MiB and a few hundred ms of CPU.
 That delay is the security feature, not a bug. Argon2id is *designed* to be
 slow so brute-force attacks are expensive.
 
+## Why the UI stays responsive while hashing
+
+The csproj sets `WasmEnableThreads=true`, and the Register / Login pages
+wrap the hashing call in `Task.Run`. With multi-threaded WASM the work
+lands on a real Web Worker, so the main thread keeps painting while
+Argon2id grinds. Without isolation it would still freeze.
+
+Multi-threaded WASM requires the browser to be in **cross-origin isolation**
+mode (`Cross-Origin-Opener-Policy: same-origin` +
+`Cross-Origin-Embedder-Policy: require-corp`). GitHub Pages doesn't let us
+set those headers server-side, so [`wwwroot/coi-serviceworker.js`](wwwroot/coi-serviceworker.js)
+installs a tiny service worker that injects them. The worker only modifies
+*response headers*; it never inspects or modifies request or response bodies.
+
+On the very first visit you'll see a one-time reload while the service
+worker takes over. After that, isolation is established and threads work
+normally.
+
+If your browser can't be isolated (e.g. service workers disabled, or the
+page is opened in a private window without persistent storage), the
+runtime falls back to single-threaded and the UI freezes during the hash.
+Functionality is unchanged.
+
 ## Project layout
 
 ```

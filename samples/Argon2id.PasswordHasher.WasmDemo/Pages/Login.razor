@@ -86,8 +86,10 @@
                 return;
             }
 
+            // Push verification onto a worker thread so the UI stays responsive.
+            // See the comment in Register.razor.
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            bool ok = Hasher.VerifyPassword(password, user.PasswordHash);
+            bool ok = await Task.Run(() => Hasher.VerifyPassword(password, user.PasswordHash));
             sw.Stop();
             _elapsedMs = sw.ElapsedMilliseconds;
             _storedHash = user.PasswordHash;
@@ -100,7 +102,7 @@
 
             if (Hasher.NeedsRehash(user.PasswordHash))
             {
-                string upgraded = Hasher.HashPassword(password);
+                string upgraded = await Task.Run(() => Hasher.HashPassword(password));
                 Users.UpdateHash(username, upgraded);
                 _result = new(true,
                     $"Welcome back, {username}. Your stored hash was upgraded to the current parameters.");
