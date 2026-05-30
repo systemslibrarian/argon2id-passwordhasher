@@ -7,7 +7,8 @@ This project is in early preview. Security fixes are applied to the latest
 
 | Version | Supported |
 | --- | --- |
-| `0.3.x-preview` | ✅ |
+| `0.4.x-preview` | ✅ |
+| `0.3.x-preview` | ❌ |
 | `0.2.x-preview` | ❌ |
 | `0.1.x-preview` | ❌ |
 

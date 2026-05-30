@@ -90,7 +90,7 @@ There is no fixed cadence. Releases happen when:
 - An enterprise consumer requests a stabilising release.
 
 Expect one to four releases per quarter on average. Tags are pushed
-with the version prefix `v` (e.g. `v0.3.0-preview.1`); the
+with the version prefix `v` (e.g. `v0.4.0-preview.1`); the
 [Release workflow](.github/workflows/release.yml) handles pack,
 publish, and provenance attestation.
 

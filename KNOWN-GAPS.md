@@ -6,7 +6,7 @@ trust by being honest about their edges. If something here surprises you, that i
 the document doing its job.
 
 Nothing below is a secret defect — these are conscious scope decisions as of
-the `0.3.0-preview.1` release.
+the `0.4.0-preview.1` release.
 
 ## 1. Plaintext `string` password lifetime
 
@@ -81,7 +81,7 @@ your expected concurrency. This is inherent to memory-hard hashing, not a bug.
 
 ## 9. Preview API stability
 
-This is `0.3.0-preview.1`. The API, defaults, and PHC handling may change before
+This is `0.4.0-preview.1`. The API, defaults, and PHC handling may change before
 `1.0.0`. Hashes produced now use the standard PHC format and are expected to
 remain verifiable, but treat the surface as not-yet-frozen. The
 `PublicApiAnalyzers`-tracked surface (`PublicAPI.Shipped.txt`,

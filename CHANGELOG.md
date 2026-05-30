@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-preview.1] — 2026-05-30
+
+### Breaking changes
+
+- `Argon2idOptions` properties are now `set` instead of `init`. This
+  unlocks the standard .NET Options pattern (`IOptions<Argon2idOptions>`
+  + `services.Configure<Argon2idOptions>(...)` binding from
+  `IConfiguration`). Source-compatible for the common
+  object-initializer construction; binary-breaking for callers that
+  reflected over the property setters as `init`-only. Hashers continue
+  to treat their options as effectively immutable post-construction.
+
 ### Added
 
 - **`Argon2idDiagnostics`** static class exposing the
@@ -164,7 +176,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decoding, constant-time verification, `NeedsRehash` for transparent
   work-factor upgrades.
 
-[Unreleased]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.3.0-preview.1...HEAD
+[Unreleased]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.1...HEAD
+[0.4.0-preview.1]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.3.0-preview.1...v0.4.0-preview.1
 [0.3.0-preview.1]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.2.0-preview.1...v0.3.0-preview.1
 [0.2.0-preview.1]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.1.0-preview.1...v0.2.0-preview.1
 [0.1.0-preview.1]: https://github.com/systemslibrarian/argon2id-passwordhasher/releases/tag/v0.1.0-preview.1

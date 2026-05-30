@@ -1,7 +1,7 @@
 name: Release
 
 # Packs and publishes both packages to NuGet when a version tag is pushed, e.g.:
-#   git tag v0.3.0-preview.1 && git push origin v0.3.0-preview.1
+#   git tag v0.4.0-preview.1 && git push origin v0.4.0-preview.1
 # Requires a repository secret named NUGET_API_KEY.
 
 on:

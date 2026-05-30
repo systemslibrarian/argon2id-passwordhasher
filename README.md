@@ -469,7 +469,7 @@ attestations.
 
 ## Versioning & status
 
-`0.3.0-preview.1` — **preview**. Follows SemVer with preview suffixes. The API and defaults may
+`0.4.0-preview.1` — **preview**. Follows SemVer with preview suffixes. The API and defaults may
 still change before `1.0.0`; hashes use the standard PHC format and are expected to stay verifiable.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full version history.
