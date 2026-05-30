@@ -1,0 +1,101 @@
+namespace Argon2id.PasswordHasher;
+
+/// <summary>
+/// A named secret key ("pepper") mixed into every Argon2id hash. A pepper is an
+/// application-level secret kept <b>outside</b> the password database (for example in
+/// a key vault or environment variable). If the database leaks but the pepper does
+/// not, the stolen hashes cannot be cracked offline.
+/// </summary>
+/// <remarks>
+/// The <see cref="Id"/> is stored in the hash (as the PHC <c>keyid</c> parameter) so
+/// verification can select the right pepper; the <see cref="Key"/> bytes are never
+/// stored. Rotate peppers over time by introducing a new active pepper and keeping
+/// retired ones in a <see cref="PepperRing"/> so existing hashes still verify.
+/// </remarks>
+public sealed class Pepper
+{
+    private readonly byte[] _key;
+
+    /// <summary>Creates a pepper.</summary>
+    /// <param name="id">
+    /// A short, stable identifier (e.g. <c>"2026-05"</c>). Must be non-empty. This value
+    /// is embedded in every hash produced with the pepper, so never change the bytes of
+    /// an existing id &#8212; introduce a new id instead.
+    /// </param>
+    /// <param name="key">The secret key bytes. Must be at least 16 bytes (128 bits).</param>
+    /// <exception cref="ArgumentException"><paramref name="id"/> is null or empty.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="key"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="key"/> is shorter than 16 bytes.</exception>
+    public Pepper(string id, byte[] key)
+    {
+        if (string.IsNullOrEmpty(id))
+        {
+            throw new ArgumentException("Pepper id must not be null or empty.", nameof(id));
+        }
+
+        ArgumentNullException.ThrowIfNull(key);
+        if (key.Length < 16)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(key), key.Length, "Pepper key must be at least 16 bytes (128 bits).");
+        }
+
+        Id = id;
+        _key = (byte[])key.Clone(); // defensive copy so the caller can zero its own buffer
+    }
+
+    /// <summary>The stable identifier embedded in hashes produced with this pepper.</summary>
+    public string Id { get; }
+
+    /// <summary>The secret key bytes. Internal: never serialized or exposed publicly.</summary>
+    internal ReadOnlySpan<byte> Key => _key;
+}
+
+/// <summary>
+/// A set of peppers comprising one <see cref="Active"/> pepper (used for new hashes)
+/// and zero or more retired peppers (still accepted when verifying older hashes).
+/// This is the unit that gives Argon2id peppering a safe rotation story.
+/// </summary>
+/// <remarks>
+/// To rotate: construct a new ring whose <see cref="Active"/> pepper is the new key and
+/// whose retired list contains the previous key(s). Existing hashes keep verifying with
+/// their original pepper, and <see cref="PasswordHasher.NeedsRehash(string)"/> reports
+/// that they should be upgraded to the active pepper on the next successful login.
+/// </remarks>
+public sealed class PepperRing
+{
+    private readonly Dictionary<string, Pepper> _byId;
+
+    /// <summary>Creates a pepper ring.</summary>
+    /// <param name="active">The pepper used to produce new hashes.</param>
+    /// <param name="retired">
+    /// Previously active peppers that must still verify existing hashes. Their ids must be
+    /// distinct from each other and from <paramref name="active"/>.
+    /// </param>
+    /// <exception cref="ArgumentNullException"><paramref name="active"/> is null.</exception>
+    /// <exception cref="ArgumentException">Two peppers share the same <see cref="Pepper.Id"/>.</exception>
+    public PepperRing(Pepper active, params Pepper[] retired)
+    {
+        ArgumentNullException.ThrowIfNull(active);
+
+        Active = active;
+        _byId = new Dictionary<string, Pepper>(StringComparer.Ordinal) { [active.Id] = active };
+
+        foreach (Pepper pepper in retired ?? [])
+        {
+            ArgumentNullException.ThrowIfNull(pepper);
+            if (!_byId.TryAdd(pepper.Id, pepper))
+            {
+                throw new ArgumentException(
+                    $"Duplicate pepper id '{pepper.Id}'. Every pepper in a ring must have a unique id.",
+                    nameof(retired));
+            }
+        }
+    }
+
+    /// <summary>The pepper used when producing new hashes.</summary>
+    public Pepper Active { get; }
+
+    /// <summary>Looks up a pepper by the id stored in a hash.</summary>
+    internal bool TryGet(string id, out Pepper pepper) => _byId.TryGetValue(id, out pepper!);
+}

@@ -1,0 +1,45 @@
+name: Release
+
+# Packs and publishes both packages to NuGet when a version tag is pushed, e.g.:
+#   git tag v0.2.0-preview.1 && git push origin v0.2.0-preview.1
+# Requires a repository secret named NUGET_API_KEY.
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Pack & Publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c Release --no-restore
+
+      - name: Test
+        run: dotnet test -c Release --no-build --verbosity normal
+
+      - name: Pack
+        run: |
+          dotnet pack src/Argon2id.PasswordHasher/Argon2id.PasswordHasher.csproj -c Release --no-build -o artifacts
+          dotnet pack src/Argon2id.PasswordHasher.AspNetCore/Argon2id.PasswordHasher.AspNetCore.csproj -c Release --no-build -o artifacts
+
+      - name: Publish to NuGet
+        run: dotnet nuget push "artifacts/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate

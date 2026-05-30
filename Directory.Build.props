@@ -1,0 +1,36 @@
+<Project>
+
+  <!--
+    Shared MSBuild properties for every project in the repository.
+    Keeps packaging, language, and build-quality settings in one place.
+  -->
+
+  <PropertyGroup>
+    <!-- Language / runtime -->
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!-- Engineering discipline: warnings are errors, full analysis on -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- Deterministic, reproducible builds -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!-- Shared author / repository metadata -->
+    <Authors>Paul Clark</Authors>
+    <Company>Paul Clark</Company>
+    <Product>Argon2id.PasswordHasher</Product>
+    <Copyright>Copyright (c) Paul Clark</Copyright>
+    <RepositoryUrl>https://github.com/systemslibrarian/argon2id-passwordhasher</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,26 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+*.user
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+
+# Test results
+[Tt]est[Rr]esults/
+*.trx
+coverage*.json
+coverage*.xml
+*.coverage
+
+# IDE / editor
+.vs/
+.vscode/
+.idea/
+*.swp
+*.DS_Store
