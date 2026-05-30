@@ -1,0 +1,96 @@
+@page "/"
+
+<PageTitle>Overview — Argon2id.PasswordHasher WASM demo</PageTitle>
+
+<h1>🔐 Argon2id.PasswordHasher — live in your browser</h1>
+
+<p class="lede">
+    This entire app &#8212; including the Argon2id hashing &#8212; runs
+    <strong>inside your browser</strong>. There is no backend. The password
+    never leaves your tab.
+</p>
+
+<div class="callout callout-info">
+    <strong>This is a demo, not a starter template.</strong> Users live in
+    page memory and disappear on reload. Hash internals are shown on screen
+    so you can <em>see</em> what's happening &#8212; a real application
+    would never display these values.
+</div>
+
+<h2>How is this possible?</h2>
+
+<p>
+    The <code>Argon2id.PasswordHasher</code> library is pure managed .NET. The
+    underlying Argon2id implementation
+    (<a href="https://github.com/kmaragon/Konscious.Security.Cryptography" target="_blank" rel="noopener">
+    Konscious</a>) uses only BCL primitives, so it compiles to WebAssembly
+    just like any other .NET code. When you click Register, your browser
+    spins up a WASM Argon2 computation and burns ~64 MiB of memory and a few
+    hundred milliseconds doing the same work a server would do.
+</p>
+
+<h2>Try it</h2>
+
+<ol class="steps">
+    <li>
+        <a href="register" class="step-link">
+            <span class="step-number">1</span>
+            <span>
+                <strong>Register</strong> a username and password. The library
+                hashes it with the default secure parameters
+                (64 MiB / t=3 / p=1) and shows you the PHC string that would
+                go into a database column.
+            </span>
+        </a>
+    </li>
+    <li>
+        <a href="login" class="step-link">
+            <span class="step-number">2</span>
+            <span>
+                <strong>Log in</strong> with the same username and password.
+                Verification re-runs Argon2id over the stored salt and
+                compares the tag in constant time.
+            </span>
+        </a>
+    </li>
+    <li>
+        <a href="users" class="step-link">
+            <span class="step-number">3</span>
+            <span>
+                <strong>Inspect</strong> the stored hashes &#8212; algorithm,
+                version, work-factor parameters, salt, and tag &#8212; all
+                packed into a single column-friendly value.
+            </span>
+        </a>
+    </li>
+</ol>
+
+<div class="callout callout-info">
+    <strong>Expect a wait.</strong> Argon2id is *designed* to be slow:
+    that's what makes brute-force attacks expensive. In WebAssembly with
+    production parameters, each hash takes a few seconds. That delay is
+    the security feature.
+</div>
+
+<h2>What the library is doing</h2>
+
+<pre><code class="lang-csharp">// Program.cs
+builder.Services.AddSingleton(new Argon2idPasswordHasher());
+
+// During registration
+string stored = hasher.HashPassword(password);
+// $argon2id$v=19$m=65536,t=3,p=1$&lt;salt&gt;$&lt;hash&gt;
+
+// During login
+bool ok = hasher.VerifyPassword(password, stored);
+
+// Optional: upgrade old hashes when parameters change
+if (hasher.NeedsRehash(stored))
+    stored = hasher.HashPassword(password);
+</code></pre>
+
+<p>
+    See <a href="https://github.com/systemslibrarian/argon2id-passwordhasher#readme"
+    target="_blank" rel="noopener">the full README</a> for the design
+    rationale, parameter-tuning guide, and the ASP.NET Core Identity adapter.
+</p>

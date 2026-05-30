@@ -1,0 +1,27 @@
+@inherits LayoutComponentBase
+
+<div class="page">
+    <nav class="sidebar">
+        <div class="brand">
+            <span class="brand-icon">🔐</span>
+            <div>
+                <div class="brand-title">Argon2id.PasswordHasher</div>
+                <div class="brand-subtitle">WASM demo · runs in your browser</div>
+            </div>
+        </div>
+
+        <NavMenu />
+
+        <footer class="sidebar-footer">
+            <a href="https://github.com/systemslibrarian/argon2id-passwordhasher" target="_blank" rel="noopener">
+                View on GitHub →
+            </a>
+        </footer>
+    </nav>
+
+    <main class="content">
+        <article>
+            @Body
+        </article>
+    </main>
+</div>

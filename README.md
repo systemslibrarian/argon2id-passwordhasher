@@ -37,21 +37,32 @@ bool ok = hasher.VerifyPassword("correct horse battery staple", stored); // true
 
 ## Try the demo
 
-A runnable Blazor Server sample lives in [`samples/Argon2id.PasswordHasher.Demo`](samples/Argon2id.PasswordHasher.Demo).
-It shows registration, login, and a live breakdown of the PHC hash string so you
-can *see* exactly what gets stored:
+There are two runnable samples, sharing the same UX so you can pick whichever
+fits what you want to show:
+
+| Sample | Where it runs | When to use it |
+| --- | --- | --- |
+| [**Live WASM demo**](https://systemslibrarian.github.io/argon2id-passwordhasher/) | In your browser, no install | Quickest way to try the library. Hashing runs on your CPU via WebAssembly. Auto-deployed to GitHub Pages on every push. |
+| [`samples/Argon2id.PasswordHasher.Demo`](samples/Argon2id.PasswordHasher.Demo) | Blazor Server (local) | Shows production-shape integration: DI, antiforgery, rate limiting, HSTS, CSP, constant-time login, memory-cost DoS gate. |
+| [`samples/Argon2id.PasswordHasher.WasmDemo`](samples/Argon2id.PasswordHasher.WasmDemo) | Blazor WebAssembly (local) | Same UX as the live demo, but running against the in-tree library. Edit and refresh. |
+
+Run either locally:
 
 ```bash
 git clone https://github.com/systemslibrarian/argon2id-passwordhasher.git
 cd argon2id-passwordhasher
+
+# Server flavor (production-shape, hardened):
 dotnet run --project samples/Argon2id.PasswordHasher.Demo
-# then open the URL it prints (e.g. https://localhost:5001)
+
+# WASM flavor (same UX as the live demo):
+dotnet run --project samples/Argon2id.PasswordHasher.WasmDemo
 ```
 
-The sample uses a `ProjectReference` to the in-tree library, so it always
-exercises the version you're working on. **It is a demo, not a starter
-template** — it stores users in process memory and shows hash internals on
-screen for educational clarity (see the sample's own README).
+Both samples use a `ProjectReference` to the in-tree library, so they always
+exercise the version you're working on. **They are demos, not starter
+templates** — users live in memory and hash internals are shown on screen for
+educational clarity (see each sample's own README).
 
 ## Table of contents
 
@@ -362,7 +373,8 @@ src/Argon2id.PasswordHasher/              core library
 src/Argon2id.PasswordHasher.AspNetCore/   IPasswordHasher<TUser> adapter + DI
 tests/                                     xUnit test projects
 benchmarks/                                BenchmarkDotNet harness
-samples/Argon2id.PasswordHasher.Demo/      runnable Blazor Server demo
+samples/Argon2id.PasswordHasher.Demo/      runnable Blazor Server demo (hardened)
+samples/Argon2id.PasswordHasher.WasmDemo/  Blazor WebAssembly demo (deployed to GH Pages)
 docs/                                      tuning & design notes
 .github/                                   CI, CodeQL, Dependabot, templates
 ```

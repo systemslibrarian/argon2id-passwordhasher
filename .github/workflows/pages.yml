@@ -1,0 +1,90 @@
+name: Deploy WASM demo to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+    # Only rebuild when something the published bundle actually depends on
+    # changes. Editing tests or the Server demo doesn't trigger a re-deploy.
+    paths:
+      - 'samples/Argon2id.PasswordHasher.WasmDemo/**'
+      - 'src/Argon2id.PasswordHasher/**'
+      - 'Directory.Build.props'
+      - 'global.json'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+# Least privilege at the workflow root; the deploy job widens what it needs.
+permissions:
+  contents: read
+
+# Allow only one Pages deployment to run at a time; queue new ones, never
+# cancel an in-flight deploy (avoids leaving the live site half-published).
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Publish WASM demo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          dotnet-version: |
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore samples/Argon2id.PasswordHasher.WasmDemo/Argon2id.PasswordHasher.WasmDemo.csproj
+
+      - name: Publish
+        # --nologo keeps the log clean; the Blazor SDK does its own static-asset
+        # fingerprinting, so we just need the final wwwroot/ tree.
+        # -f is required because the csproj uses <TargetFrameworks> (plural)
+        # even though only net10.0 is listed — MSBuild treats it as cross-targeting.
+        run: |
+          dotnet publish samples/Argon2id.PasswordHasher.WasmDemo/Argon2id.PasswordHasher.WasmDemo.csproj \
+            -c Release \
+            -f net10.0 \
+            -o publish \
+            --nologo
+
+      - name: Rewrite <base href> for GitHub Pages subpath
+        # The site is served at https://<user>.github.io/<repo>/ so every
+        # absolute asset path must be relative to that subpath. We patch the
+        # bootstrap HTML once after publish; this is the only deviation from
+        # what a root-hosted deploy would do.
+        run: |
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          sed -i "s|<base href=\"/\" />|<base href=\"/${REPO_NAME}/\" />|" publish/wwwroot/index.html
+          # SPA fallback: GitHub Pages serves 404.html for any unknown path,
+          # so duplicating index.html lets client-side routing take over.
+          cp publish/wwwroot/index.html publish/wwwroot/404.html
+          # Stop Jekyll from stripping the `_framework/` folder.
+          touch publish/wwwroot/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: publish/wwwroot
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write       # required for actions/deploy-pages
+      id-token: write    # required for OIDC-based deploy
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
