@@ -1,0 +1,6 @@
+{
+  "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
+  "// rationale": "MetricsTests uses System.Diagnostics.Metrics, which is process-global. Parallel test classes pollute each other's MeterListener captures. Disabling collection parallelism is the cleanest fix and the per-test cost is negligible.",
+  "parallelizeTestCollections": false,
+  "parallelizeAssembly": false
+}

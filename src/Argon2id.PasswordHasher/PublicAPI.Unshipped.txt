@@ -1,4 +1,13 @@
 #nullable enable
+Argon2id.PasswordHasher.Argon2idDiagnostics
+const Argon2id.PasswordHasher.Argon2idDiagnostics.HashCountName = "argon2id.hash.count" -> string!
+const Argon2id.PasswordHasher.Argon2idDiagnostics.HashDurationName = "argon2id.hash.duration" -> string!
+const Argon2id.PasswordHasher.Argon2idDiagnostics.MeterName = "Argon2id.PasswordHasher" -> string!
+const Argon2id.PasswordHasher.Argon2idDiagnostics.ParseFailureCountName = "argon2id.parse.failure.count" -> string!
+const Argon2id.PasswordHasher.Argon2idDiagnostics.RehashNeededCountName = "argon2id.rehash.needed.count" -> string!
+const Argon2id.PasswordHasher.Argon2idDiagnostics.VerifyCountName = "argon2id.verify.count" -> string!
+const Argon2id.PasswordHasher.Argon2idDiagnostics.VerifyDurationName = "argon2id.verify.duration" -> string!
+const Argon2id.PasswordHasher.Argon2idDiagnostics.VerifySuccessCountName = "argon2id.verify.success.count" -> string!
 Argon2id.PasswordHasher.Argon2idOptions
 Argon2id.PasswordHasher.Argon2idOptions.Argon2idOptions() -> void
 Argon2id.PasswordHasher.Argon2idOptions.<Clone>$() -> Argon2id.PasswordHasher.Argon2idOptions!

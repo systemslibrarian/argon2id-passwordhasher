@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`Argon2idDiagnostics`** static class exposing the
+  `System.Diagnostics.Metrics.Meter` name (`"Argon2id.PasswordHasher"`)
+  and the names of every instrument the library emits. Subscribing your
+  observability stack (OpenTelemetry, Prometheus, etc.) with
+  `AddMeter(Argon2idDiagnostics.MeterName)` is now sufficient to get
+  hash count + duration, verify count + duration, verify-success count,
+  rehash-needed count, and parse-failure count out of the box. Zero
+  per-call overhead when nothing is listening.
 - **`MigratingPasswordHasher<TUser>`** in the AspNetCore package — an
   `IPasswordHasher<TUser>` that routes verification by format: any stored
   value beginning with `$argon2id$` goes to the Argon2id path, everything

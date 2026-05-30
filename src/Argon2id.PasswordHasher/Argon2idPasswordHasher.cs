@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -171,6 +172,7 @@ public sealed class Argon2idPasswordHasher
     {
         if (password.IsEmpty || !PhcString.TryParse(encodedHash, out PhcString? parsed))
         {
+            RecordParseFailureIfApplicable(encodedHash);
             return VerifyResult.Failed;
         }
 
@@ -182,10 +184,25 @@ public sealed class Argon2idPasswordHasher
     {
         if (password.IsEmpty || !PhcString.TryParse(encodedHash, out PhcString? parsed))
         {
+            RecordParseFailureIfApplicable(encodedHash);
             return VerifyResult.Failed;
         }
 
         return VerifyAndZero(password.ToArray(), parsed!);
+    }
+
+    /// <summary>
+    /// Increments <c>argon2id.parse.failure.count</c> only when the input was
+    /// non-empty. An empty/null stored value is a caller-input issue rather
+    /// than a parse failure of the PHC encoder, so we don't pollute the
+    /// metric with it.
+    /// </summary>
+    private static void RecordParseFailureIfApplicable(string? encodedHash)
+    {
+        if (!string.IsNullOrEmpty(encodedHash))
+        {
+            Argon2idInstruments.ParseFailureCount.Add(1);
+        }
     }
 
     /// <summary>
@@ -231,6 +248,7 @@ public sealed class Argon2idPasswordHasher
     {
         byte[] salt = RandomNumberGenerator.GetBytes(_options.SaltSizeBytes);
         byte[]? hash = null;
+        long startTicks = Stopwatch.GetTimestamp();
         try
         {
             hash = Compute(password, salt, _options.MemorySizeKib, _options.Iterations,
@@ -245,12 +263,21 @@ public sealed class Argon2idPasswordHasher
             {
                 CryptographicOperations.ZeroMemory(hash);
             }
+
+            // Metrics — recorded last so they always reflect a complete call
+            // whether or not we threw mid-flight. Both instruments are no-ops
+            // when nothing is listening.
+            Argon2idInstruments.HashCount.Add(1);
+            Argon2idInstruments.HashDuration.Record(
+                Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds);
         }
     }
 
     private VerifyResult VerifyAndZero(byte[] password, PhcString parsed)
     {
         byte[]? candidate = null;
+        VerifyResult outcome = VerifyResult.Failed;
+        long startTicks = Stopwatch.GetTimestamp();
         try
         {
             byte[]? secret = null;
@@ -259,7 +286,7 @@ public sealed class Argon2idPasswordHasher
                 // The hash was peppered: we can only verify if we hold that pepper.
                 if (_pepper is null || !_pepper.TryGet(parsed.KeyId, out Pepper? pepper))
                 {
-                    return VerifyResult.Failed;
+                    return outcome; // VerifyResult.Failed
                 }
 
                 secret = pepper.KnownSecret;
@@ -272,10 +299,11 @@ public sealed class Argon2idPasswordHasher
 
             if (!CryptographicOperations.FixedTimeEquals(candidate, parsed.Hash))
             {
-                return VerifyResult.Failed;
+                return outcome; // VerifyResult.Failed
             }
 
-            return new VerifyResult(Success: true, NeedsRehash: NeedsRehashCore(parsed));
+            outcome = new VerifyResult(Success: true, NeedsRehash: NeedsRehashCore(parsed));
+            return outcome;
         }
         finally
         {
@@ -283,6 +311,19 @@ public sealed class Argon2idPasswordHasher
             if (candidate is not null)
             {
                 CryptographicOperations.ZeroMemory(candidate);
+            }
+
+            // Metrics — every verify path lands here exactly once.
+            Argon2idInstruments.VerifyCount.Add(1);
+            Argon2idInstruments.VerifyDuration.Record(
+                Stopwatch.GetElapsedTime(startTicks).TotalMilliseconds);
+            if (outcome.Success)
+            {
+                Argon2idInstruments.VerifySuccessCount.Add(1);
+                if (outcome.NeedsRehash)
+                {
+                    Argon2idInstruments.RehashNeededCount.Add(1);
+                }
             }
         }
     }
