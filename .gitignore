@@ -12,13 +12,17 @@ artifacts/
 .nuget/
 
 # Local NuGet API keys — never commit. Used by `dotnet nuget push` from a
-# developer machine. The intentional repo location is .nuget-api-key at
-# the root; the broader patterns below protect against typos and aliases.
+# developer machine. Broad patterns below catch every plausible filename:
+# leading-dot, no-dot, .txt extension, typo'd leading-comma, etc.
 .nuget-api-key
 nuget-api-key
 nuget.key
 *.nuget-key
+*api-key*
+*api_key*
+*.apikey
 .apikeys
+,nuget-api-key*
 secrets/
 
 # Test results
