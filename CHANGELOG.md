@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **`Pepper.FromHex(string, string)`** and **`Pepper.FromBase64(string, string)`**
+  static factories have been removed from the public API. The plain
+  `Pepper(string, byte[])` constructor remains the supported way to build
+  a pepper; decode hex/base64 strings yourself with
+  `Convert.FromHexString` / `Convert.FromBase64String` before calling it.
+  These helpers shipped in `0.4.0-preview.1` and have been pulled because
+  the maintainer intends to host that pattern in a separate library;
+  cross-library duplication would create a naming-collision problem if
+  both packages were referenced together.
+
 ## [0.4.0-preview.1] — 2026-05-30
 
 ### Breaking changes

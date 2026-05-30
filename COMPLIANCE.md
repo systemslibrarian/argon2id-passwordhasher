@@ -144,9 +144,10 @@ materialising a `string` at all.
 
 Yes, via `Pepper` and `PepperRing`. Pepper key bytes are never persisted
 by the library; rotation is first-class. The pepper id (not the key) is
-embedded in the hash via the PHC `keyid` extension. The
-`Pepper.FromHex` / `Pepper.FromBase64` factories simplify loading
-peppers from a KMS or vault.
+embedded in the hash via the PHC `keyid` extension. See
+[`docs/pepper-key-management.md`](docs/pepper-key-management.md) for the
+loading patterns against Azure Key Vault, AWS Secrets Manager, GCP
+Secret Manager, HashiCorp Vault, and environment variables.
 
 > **"How is the library built, signed, and distributed?"**
 

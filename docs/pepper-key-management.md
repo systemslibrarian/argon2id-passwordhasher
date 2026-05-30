@@ -41,9 +41,18 @@ Once `PepperRing` is in DI, every new hash is produced with the active
 pepper and every verify can use either the active or any retired
 pepper (selected by the `keyid` embedded in the stored hash).
 
-The `Pepper.FromHex(string, string)` and `Pepper.FromBase64(string, string)`
-factories save a `Convert.FromHexString` / `Convert.FromBase64String`
-line when your secret store returns text rather than bytes.
+When your secret store hands you a hex or base64 *string* rather than
+bytes, decode it with `Convert.FromHexString` or
+`Convert.FromBase64String` before passing to the `Pepper(string, byte[])`
+constructor:
+
+```csharp
+byte[] activeKey = Convert.FromHexString(hexFromSecretStore);
+// or
+byte[] activeKey = Convert.FromBase64String(base64FromSecretStore);
+
+var pepper = new Pepper("2026-11", activeKey);
+```
 
 ## Environment variables (dev / minimal prod)
 
@@ -56,7 +65,7 @@ secret injection).
 string activeHex = builder.Configuration["Argon2id:Pepper:ActiveHex"]
     ?? throw new InvalidOperationException("Missing Argon2id pepper.");
 
-var ring = new PepperRing(Pepper.FromHex("2026-11", activeHex));
+var ring = new PepperRing(new Pepper("2026-11", Convert.FromHexString(activeHex)));
 builder.Services.AddSingleton(ring);
 ```
 
@@ -88,8 +97,8 @@ KeyVaultSecret active = await client.GetSecretAsync("argon2id-pepper-active");
 KeyVaultSecret retired = await client.GetSecretAsync("argon2id-pepper-2026-05");
 
 var ring = new PepperRing(
-    active: Pepper.FromBase64("2026-11", active.Value),
-    retired: Pepper.FromBase64("2026-05", retired.Value));
+    active: new Pepper("2026-11", Convert.FromBase64String(active.Value)),
+    retired: new Pepper("2026-05", Convert.FromBase64String(retired.Value)));
 
 builder.Services.AddSingleton(ring);
 ```
@@ -119,8 +128,8 @@ GetSecretValueResponse retired = await client.GetSecretValueAsync(
     new GetSecretValueRequest { SecretId = "argon2id/pepper/2026-05" });
 
 var ring = new PepperRing(
-    active: Pepper.FromBase64("2026-11", active.SecretString),
-    retired: Pepper.FromBase64("2026-05", retired.SecretString));
+    active: new Pepper("2026-11", Convert.FromBase64String(active.SecretString)),
+    retired: new Pepper("2026-05", Convert.FromBase64String(retired.SecretString)));
 
 builder.Services.AddSingleton(ring);
 ```
@@ -143,7 +152,9 @@ SecretVersionName activeName = new("PROJECT_ID", "argon2id-pepper-active", "late
 AccessSecretVersionResponse active = client.AccessSecretVersion(activeName);
 
 var ring = new PepperRing(
-    active: Pepper.FromBase64("2026-11", active.Payload.Data.ToStringUtf8()));
+    active: new Pepper(
+        "2026-11",
+        Convert.FromBase64String(active.Payload.Data.ToStringUtf8())));
 
 builder.Services.AddSingleton(ring);
 ```
@@ -165,8 +176,9 @@ var vault = new VaultClient(settings);
 var active = await vault.V1.Secrets.KeyValue.V2
     .ReadSecretAsync("argon2id/pepper/active", mountPoint: "secret");
 
-var ring = new PepperRing(
-    Pepper.FromBase64("2026-11", (string)active.Data.Data["value"]));
+var ring = new PepperRing(new Pepper(
+    "2026-11",
+    Convert.FromBase64String((string)active.Data.Data["value"])));
 
 builder.Services.AddSingleton(ring);
 ```

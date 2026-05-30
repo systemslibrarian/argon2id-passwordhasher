@@ -62,8 +62,6 @@ override Argon2id.PasswordHasher.VerifyResult.GetHashCode() -> int
 static Argon2id.PasswordHasher.Argon2idOptions.Recommended.get -> Argon2id.PasswordHasher.Argon2idOptions!
 static Argon2id.PasswordHasher.Argon2idOptions.operator !=(Argon2id.PasswordHasher.Argon2idOptions? left, Argon2id.PasswordHasher.Argon2idOptions? right) -> bool
 static Argon2id.PasswordHasher.Argon2idOptions.operator ==(Argon2id.PasswordHasher.Argon2idOptions? left, Argon2id.PasswordHasher.Argon2idOptions? right) -> bool
-static Argon2id.PasswordHasher.Pepper.FromBase64(string! id, string! base64Key) -> Argon2id.PasswordHasher.Pepper!
-static Argon2id.PasswordHasher.Pepper.FromHex(string! id, string! hexKey) -> Argon2id.PasswordHasher.Pepper!
 static Argon2id.PasswordHasher.VerifyResult.Failed.get -> Argon2id.PasswordHasher.VerifyResult
 static Argon2id.PasswordHasher.VerifyResult.operator !=(Argon2id.PasswordHasher.VerifyResult left, Argon2id.PasswordHasher.VerifyResult right) -> bool
 static Argon2id.PasswordHasher.VerifyResult.operator ==(Argon2id.PasswordHasher.VerifyResult left, Argon2id.PasswordHasher.VerifyResult right) -> bool
