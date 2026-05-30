@@ -51,6 +51,78 @@ public sealed class Pepper
     /// <summary>The stable identifier embedded in hashes produced with this pepper.</summary>
     public string Id { get; }
 
+    /// <summary>
+    /// Creates a pepper whose key bytes are decoded from a hex string.
+    /// Convenient when the secret comes from a vault/KMS as a hex value.
+    /// </summary>
+    /// <param name="id">The pepper identifier; see <see cref="Pepper(string, byte[])"/>.</param>
+    /// <param name="hexKey">
+    /// The key bytes as a hex string. Length must be even and decode to at least
+    /// 16 bytes (32 hex characters); whitespace and a leading "0x" are not allowed.
+    /// </param>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="id"/> is null/empty, or <paramref name="hexKey"/> is null/empty
+    /// or not a valid hex string.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// The decoded key is shorter than 16 bytes.
+    /// </exception>
+    public static Pepper FromHex(string id, string hexKey)
+    {
+        if (string.IsNullOrEmpty(hexKey))
+        {
+            throw new ArgumentException("Pepper key (hex) must not be null or empty.", nameof(hexKey));
+        }
+
+        byte[] key;
+        try
+        {
+            key = Convert.FromHexString(hexKey);
+        }
+        catch (FormatException ex)
+        {
+            throw new ArgumentException(
+                "Pepper key (hex) is not a valid hex string.", nameof(hexKey), ex);
+        }
+
+        return new Pepper(id, key);
+    }
+
+    /// <summary>
+    /// Creates a pepper whose key bytes are decoded from a base64 string
+    /// (standard alphabet, with or without padding). Convenient when the
+    /// secret comes from a vault/KMS as a base64 value.
+    /// </summary>
+    /// <param name="id">The pepper identifier; see <see cref="Pepper(string, byte[])"/>.</param>
+    /// <param name="base64Key">The key bytes as a base64 string.</param>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="id"/> is null/empty, or <paramref name="base64Key"/> is null/empty
+    /// or not valid base64.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// The decoded key is shorter than 16 bytes.
+    /// </exception>
+    public static Pepper FromBase64(string id, string base64Key)
+    {
+        if (string.IsNullOrEmpty(base64Key))
+        {
+            throw new ArgumentException("Pepper key (base64) must not be null or empty.", nameof(base64Key));
+        }
+
+        byte[] key;
+        try
+        {
+            key = Convert.FromBase64String(base64Key);
+        }
+        catch (FormatException ex)
+        {
+            throw new ArgumentException(
+                "Pepper key (base64) is not a valid base64 string.", nameof(base64Key), ex);
+        }
+
+        return new Pepper(id, key);
+    }
+
     /// <summary>The secret key bytes. Internal: never serialized or exposed publicly.</summary>
     internal ReadOnlySpan<byte> Key => _key;
 
