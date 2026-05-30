@@ -60,12 +60,37 @@ jobs:
         # absolute asset path must be relative to that subpath. We patch the
         # bootstrap HTML once after publish; this is the only deviation from
         # what a root-hosted deploy would do.
+        #
+        # We verify the substitution actually fired (and check both the
+        # pre- and post-state) so an accidental edit to index.html that
+        # broke the sed pattern would fail the workflow instead of silently
+        # publishing a site whose asset paths are all 404.
         run: |
+          set -euo pipefail
           REPO_NAME="${GITHUB_REPOSITORY#*/}"
-          sed -i "s|<base href=\"/\" />|<base href=\"/${REPO_NAME}/\" />|" publish/wwwroot/index.html
+          INDEX="publish/wwwroot/index.html"
+          OLD_HREF='<base href="/" />'
+          NEW_HREF="<base href=\"/${REPO_NAME}/\" />"
+
+          if ! grep -qF "$OLD_HREF" "$INDEX"; then
+            echo "::error::Expected '$OLD_HREF' in $INDEX but did not find it."
+            echo "::error::Either the HTML has drifted or it was already rewritten."
+            echo "::error::Update the sed step in .github/workflows/pages.yml to match."
+            exit 1
+          fi
+
+          sed -i "s|${OLD_HREF}|${NEW_HREF}|" "$INDEX"
+
+          if ! grep -qF "$NEW_HREF" "$INDEX"; then
+            echo "::error::Substitution produced no change in $INDEX."
+            exit 1
+          fi
+
+          echo "Rewrote <base href> to /${REPO_NAME}/"
+
           # SPA fallback: GitHub Pages serves 404.html for any unknown path,
           # so duplicating index.html lets client-side routing take over.
-          cp publish/wwwroot/index.html publish/wwwroot/404.html
+          cp "$INDEX" publish/wwwroot/404.html
           # Stop Jekyll from stripping the `_framework/` folder.
           touch publish/wwwroot/.nojekyll
 
