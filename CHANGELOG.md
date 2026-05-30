@@ -7,17 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-preview.2] — 2026-05-30
+
 ### Removed
 
 - **`Pepper.FromHex(string, string)`** and **`Pepper.FromBase64(string, string)`**
-  static factories have been removed from the public API. The plain
-  `Pepper(string, byte[])` constructor remains the supported way to build
-  a pepper; decode hex/base64 strings yourself with
-  `Convert.FromHexString` / `Convert.FromBase64String` before calling it.
-  These helpers shipped in `0.4.0-preview.1` and have been pulled because
-  the maintainer intends to host that pattern in a separate library;
-  cross-library duplication would create a naming-collision problem if
-  both packages were referenced together.
+  static factories. They shipped in `0.4.0-preview.1` and have been pulled
+  here because the maintainer intends to host that "decode-from-text-then-
+  construct" pattern in a separate library; shipping it from two packages
+  would create a naming-collision problem when both are referenced together.
+  - **Migration:** use the plain `Pepper(string id, byte[] key)` constructor
+    and decode the hex/base64 yourself:
+    `new Pepper("2026-11", Convert.FromHexString(hex))` or
+    `new Pepper("2026-11", Convert.FromBase64String(b64))`.
+
+### Notes
+
+- The release-tag workflow has been split: tag pushes now only **prepare**
+  the release (test, pack, SBOM, attestations, GitHub Release with all
+  artifacts attached). **NuGet publication is a separate manual CLI step**
+  — see [`PUBLISHING.md`](PUBLISHING.md). The `NUGET_API_KEY` repository
+  secret is no longer read by any workflow.
 
 ## [0.4.0-preview.1] — 2026-05-30
 
@@ -188,7 +198,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decoding, constant-time verification, `NeedsRehash` for transparent
   work-factor upgrades.
 
-[Unreleased]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.1...HEAD
+[Unreleased]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.2...HEAD
+[0.4.0-preview.2]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.1...v0.4.0-preview.2
 [0.4.0-preview.1]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.3.0-preview.1...v0.4.0-preview.1
 [0.3.0-preview.1]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.2.0-preview.1...v0.3.0-preview.1
 [0.2.0-preview.1]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.1.0-preview.1...v0.2.0-preview.1

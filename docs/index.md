@@ -38,7 +38,7 @@ bool ok = hasher.VerifyPassword("correct horse battery staple", stored); // true
 
 ## Status
 
-Preview (`0.4.0-preview.1`). Public API is locked by
+Preview (`0.4.0-preview.2`). Public API is locked by
 `Microsoft.CodeAnalysis.PublicApiAnalyzers`. Hashes use the standard PHC
 format and are expected to remain verifiable through 1.0.
 

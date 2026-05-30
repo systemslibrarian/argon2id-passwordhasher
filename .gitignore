@@ -44,3 +44,8 @@ coverage*.xml
 docs/_site/
 docs/api/*.yml
 docs/api/*.manifest
+
+# Out-of-repo reviewer suggestion drops (gemini, chatgpt). Not project artifacts.
+chatgpt.md
+geminisuggestions.md
+*suggestions.md

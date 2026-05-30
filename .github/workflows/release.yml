@@ -3,7 +3,7 @@ name: Release
 # Builds, tests, packs, generates SBOMs + build-provenance attestations, and
 # creates a GitHub Release with all artifacts attached — when a version tag
 # is pushed, e.g.:
-#   git tag v0.4.0-preview.1 && git push origin v0.4.0-preview.1
+#   git tag v0.4.0-preview.2 && git push origin v0.4.0-preview.2
 #
 # This workflow does NOT push to NuGet.org. NuGet publication is intentionally
 # a manual CLI step performed from a maintainer's workstation so the operator
