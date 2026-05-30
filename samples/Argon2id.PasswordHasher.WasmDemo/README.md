@@ -83,6 +83,8 @@ Pages/
   Register.razor         — registration form, displays the stored hash
   Login.razor            — verification flow
   Users.razor            — list of every registered user
+  Playground.razor       — live m/t/p tuning with a comparison history table
+  Verify.razor           — paste a PHC string + password, see the parsed pieces
   PhcBreakdownView.razor — reusable PHC-decomposition component
 Services/
   DemoUser.cs            — in-memory user record

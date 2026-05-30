@@ -1,0 +1,127 @@
+@page "/verify"
+@inject Argon2idPasswordHasher Hasher
+
+<PageTitle>Verify a hash — Argon2id.PasswordHasher WASM demo</PageTitle>
+
+<h1>🔍 Verify any PHC hash</h1>
+
+<p class="lede">
+    Paste a PHC string and a password. The library re-derives the hash
+    using the parameters stored inside the string, then compares the
+    candidate tag to the stored tag in constant time. Useful for
+    sanity-checking hashes produced by your own backend, by
+    <code>libsodium</code>, or by the Argon2id reference implementation.
+</p>
+
+<div class="callout callout-info">
+    Verification never throws on bad input. A malformed, unsupported, or
+    non-Argon2id string just returns failed. Hashes peppered with a
+    <code>keyid</code> you don't hold will fail closed.
+</div>
+
+<EditForm Model="_input" OnValidSubmit="VerifyAsync" class="form">
+    <DataAnnotationsValidator />
+
+    <div class="form-row">
+        <label for="hash">PHC string</label>
+        <InputTextArea id="hash" @bind-Value="_input.EncodedHash" rows="3" spellcheck="false"
+                       placeholder="$argon2id$v=19$m=65536,t=3,p=1$..." />
+        <ValidationMessage For="@(() => _input.EncodedHash)" class="validation-message" />
+    </div>
+
+    <div class="form-row">
+        <label for="password">Password</label>
+        <InputText id="password" type="password" @bind-Value="_input.Password" autocomplete="off" maxlength="256" />
+        <ValidationMessage For="@(() => _input.Password)" class="validation-message" />
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary" disabled="@_busy">
+            @if (_busy)
+            {
+                <span>Verifying&hellip;</span>
+            }
+            else
+            {
+                <span>Verify</span>
+            }
+        </button>
+    </div>
+</EditForm>
+
+@if (_result is { } result)
+{
+    <div class="callout @(result.Success ? "callout-success" : "callout-error")">
+        <strong>@(result.Success ? "✓ Verified." : "✗ Did not verify.")</strong>
+        @if (result.Success && result.NeedsRehash)
+        {
+            <span>
+                The stored parameters are below your current configuration —
+                <code>NeedsRehash</code> is <code>true</code>.
+            </span>
+        }
+        else if (result.Success)
+        {
+            <span>Stored parameters match (or exceed) the current defaults.</span>
+        }
+        <span class="muted">Took <code>~@_elapsedMs ms</code>.</span>
+    </div>
+}
+
+@if (_breakdown is not null)
+{
+    <h2>What was inside the string</h2>
+    <PhcBreakdownView Breakdown="_breakdown" />
+}
+else if (!string.IsNullOrEmpty(_input.EncodedHash) && _result is { Success: false })
+{
+    <div class="callout callout-error">
+        The string could not be parsed as a PHC-encoded Argon2id hash.
+    </div>
+}
+
+@code {
+    private readonly VerifyInput _input = new();
+    private bool _busy;
+    private VerifyResult? _result;
+    private PhcBreakdown? _breakdown;
+    private long _elapsedMs;
+
+    private async Task VerifyAsync()
+    {
+        _result = null;
+        _breakdown = null;
+        _busy = true;
+        await Task.Yield();
+
+        try
+        {
+            string hash = _input.EncodedHash!.Trim();
+            string password = _input.Password!;
+
+            // Parse the structure first so we can display the breakdown
+            // even if the verify itself fails (wrong password).
+            _breakdown = PhcBreakdown.TryParse(hash);
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            VerifyResult result = await Task.Run(() => Hasher.Verify(password, hash));
+            sw.Stop();
+            _elapsedMs = sw.ElapsedMilliseconds;
+            _result = result;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    public sealed class VerifyInput
+    {
+        [Required(ErrorMessage = "Paste a PHC string to verify.")]
+        public string? EncodedHash { get; set; }
+
+        [Required(ErrorMessage = "Password is required.")]
+        [StringLength(256, MinimumLength = 1, ErrorMessage = "Password must be 1–256 characters.")]
+        public string? Password { get; set; }
+    }
+}

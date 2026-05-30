@@ -1,5 +1,6 @@
-# DocFx generates the API yml/md here at build time. Don't commit the output;
-# regenerate from the XML doc comments on every build.
+# DocFx generates the API yml/manifest here at build time. Don't commit
+# the output; it's regenerated from the XML doc comments on every build.
+# Only hand-written files (index.md, this .gitignore) stay under source
+# control.
 *.yml
-!toc.yml
 *.manifest

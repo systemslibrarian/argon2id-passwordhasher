@@ -45,6 +45,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added (samples)
 
+- **Parameter playground** page (`/playground`) in the WASM demo: tweak
+  memory cost, iterations, parallelism in the browser and watch the
+  elapsed-time column. History table includes a slow-down ratio vs. the
+  library defaults, and below-minimum runs are flagged in red.
+- **Verify any hash** page (`/verify`) in the WASM demo: paste a PHC
+  string + password, see verify outcome and the decomposed parameters.
+  Calls the new `Verify(...)` API. Useful for sanity-checking hashes
+  produced by another backend (libsodium, the reference impl, etc.).
 - The WebAssembly demo now enables multi-threaded WASM
   (`WasmEnableThreads=true`) and offloads hashing via `Task.Run`, so the UI
   stays responsive during Argon2. A minimal in-tree

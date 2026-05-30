@@ -1,0 +1,219 @@
+@page "/playground"
+@inject IJSRuntime JS
+
+<PageTitle>Parameter playground — Argon2id.PasswordHasher WASM demo</PageTitle>
+
+<h1>⚙️ Parameter playground</h1>
+
+<p class="lede">
+    Tweak the Argon2id work factor and feel the cost change. Higher memory
+    and more iterations make brute-force attacks more expensive — and your
+    real users wait that much longer to log in. Find the right balance for
+    your hardware and your latency budget.
+</p>
+
+<div class="callout callout-info">
+    Everything below runs in your browser. The same hash takes very different
+    times on different hardware, so calibrate on production servers, not on
+    a laptop in WebAssembly.
+</div>
+
+<EditForm Model="_input" OnValidSubmit="RunHashAsync" class="form playground-form">
+    <DataAnnotationsValidator />
+
+    <div class="playground-grid">
+        <div class="form-row">
+            <label for="memory">Memory cost (KiB)</label>
+            <InputNumber id="memory" @bind-Value="_input.MemoryKib" min="8192" max="524288" step="8192" />
+            <span class="muted">8 192 – 524 288 (default: 65 536 = 64 MiB)</span>
+            <ValidationMessage For="@(() => _input.MemoryKib)" class="validation-message" />
+        </div>
+
+        <div class="form-row">
+            <label for="iterations">Iterations</label>
+            <InputNumber id="iterations" @bind-Value="_input.Iterations" min="1" max="10" />
+            <span class="muted">1 – 10 (default: 3)</span>
+            <ValidationMessage For="@(() => _input.Iterations)" class="validation-message" />
+        </div>
+
+        <div class="form-row">
+            <label for="parallelism">Parallelism</label>
+            <InputNumber id="parallelism" @bind-Value="_input.Parallelism" min="1" max="8" />
+            <span class="muted">1 – 8 (default: 1; keep low on shared servers)</span>
+            <ValidationMessage For="@(() => _input.Parallelism)" class="validation-message" />
+        </div>
+    </div>
+
+    <p class="muted estimated-cost">
+        Estimated RAM held during one hash: <strong>@FormatMemory(_input.MemoryKib * _input.Parallelism)</strong>
+    </p>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary" disabled="@_busy">
+            @if (_busy)
+            {
+                <span>Hashing&hellip;</span>
+            }
+            else
+            {
+                <span>Run hash</span>
+            }
+        </button>
+        @if (_runs.Count > 0)
+        {
+            <button type="button" class="btn btn-secondary" @onclick="ClearRuns" disabled="@_busy">
+                Clear history
+            </button>
+        }
+    </div>
+</EditForm>
+
+@if (_lastError is not null)
+{
+    <div class="callout callout-error">@_lastError</div>
+}
+
+@if (_runs.Count > 0)
+{
+    <h2>Run history</h2>
+    <table class="runs">
+        <thead>
+            <tr>
+                <th>m (KiB)</th>
+                <th>t</th>
+                <th>p</th>
+                <th class="num">elapsed</th>
+                <th class="num">slow-down vs default</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (RunRecord run in _runs)
+            {
+                <tr class="@(run.IsBelowMinimum ? "warn" : null)">
+                    <td><code>@run.MemoryKib</code></td>
+                    <td><code>@run.Iterations</code></td>
+                    <td><code>@run.Parallelism</code></td>
+                    <td class="num"><code>@run.ElapsedMs ms</code></td>
+                    <td class="num">@FormatSlowdown(run.ElapsedMs)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (_runs.Any(r => r.IsBelowMinimum))
+    {
+        <div class="callout callout-error">
+            Highlighted rows used parameters <strong>below the library's enforced minimums</strong>.
+            The hash still completed (this is the demo), but the production
+            <code>Argon2idPasswordHasher</code> constructor would have thrown
+            <code>ArgumentOutOfRangeException</code> instead.
+        </div>
+    }
+}
+
+@code {
+    private readonly PlaygroundInput _input = new();
+    private readonly List<RunRecord> _runs = [];
+    private bool _busy;
+    private string? _lastError;
+
+    private async Task RunHashAsync()
+    {
+        _lastError = null;
+        _busy = true;
+        await Task.Yield();
+
+        try
+        {
+            // Construct a hasher per run so the playground exercises the same
+            // validation path a real caller would hit. Below-minimum values
+            // would normally throw — we catch and surface the message.
+            Argon2idPasswordHasher? hasher = null;
+            bool belowMinimum = false;
+            try
+            {
+                hasher = new Argon2idPasswordHasher(new Argon2idOptions
+                {
+                    MemorySizeKib = _input.MemoryKib,
+                    Iterations = _input.Iterations,
+                    DegreeOfParallelism = _input.Parallelism,
+                });
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // Build a bypassed hasher just for the playground using the
+                // recommended floor (lets us still time the visitor's params).
+                belowMinimum = true;
+                hasher = new Argon2idPasswordHasher(new Argon2idOptions
+                {
+                    MemorySizeKib = Math.Max(_input.MemoryKib, 8192),
+                    Iterations = Math.Max(_input.Iterations, 1),
+                    DegreeOfParallelism = Math.Max(_input.Parallelism, 1),
+                });
+            }
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            _ = await Task.Run(() => hasher.HashPassword("playground"));
+            sw.Stop();
+
+            // Prepend so the most recent run is at the top of the history.
+            _runs.Insert(0, new RunRecord(
+                MemoryKib: _input.MemoryKib,
+                Iterations: _input.Iterations,
+                Parallelism: _input.Parallelism,
+                ElapsedMs: sw.ElapsedMilliseconds,
+                IsBelowMinimum: belowMinimum));
+
+            // Cap history at 10 rows so the table doesn't grow unbounded.
+            if (_runs.Count > 10)
+            {
+                _runs.RemoveAt(_runs.Count - 1);
+            }
+        }
+        catch (Exception ex)
+        {
+            _lastError = $"Failed to run hash: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void ClearRuns() => _runs.Clear();
+
+    private static string FormatMemory(int kib) =>
+        kib < 1024 ? $"{kib} KiB" : $"{kib / 1024.0:F1} MiB";
+
+    private string FormatSlowdown(long elapsedMs)
+    {
+        // Compare to the first row that used the library defaults (64 MiB, t=3, p=1).
+        RunRecord? baseline = _runs.LastOrDefault(r =>
+            r.MemoryKib == 65536 && r.Iterations == 3 && r.Parallelism == 1);
+        if (baseline is null || baseline.ElapsedMs == 0)
+        {
+            return "—";
+        }
+        double ratio = (double)elapsedMs / baseline.ElapsedMs;
+        return $"{ratio:F2}×";
+    }
+
+    public sealed class PlaygroundInput
+    {
+        [Range(8192, 524288, ErrorMessage = "Memory must be 8 192 – 524 288 KiB.")]
+        public int MemoryKib { get; set; } = 65536;
+
+        [Range(1, 10, ErrorMessage = "Iterations must be 1 – 10.")]
+        public int Iterations { get; set; } = 3;
+
+        [Range(1, 8, ErrorMessage = "Parallelism must be 1 – 8.")]
+        public int Parallelism { get; set; } = 1;
+    }
+
+    private sealed record RunRecord(
+        int MemoryKib,
+        int Iterations,
+        int Parallelism,
+        long ElapsedMs,
+        bool IsBelowMinimum);
+}
