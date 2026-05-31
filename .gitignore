@@ -49,3 +49,6 @@ docs/api/*.manifest
 chatgpt.md
 geminisuggestions.md
 *suggestions.md
+
+# BenchmarkDotNet results — regenerated on every run.
+BenchmarkDotNet.Artifacts/
