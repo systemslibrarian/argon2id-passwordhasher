@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-preview.3] — 2026-05-30
+
+### Added
+
+- **`Argon2idPasswordHasher.IsArgon2idHash(string?)`** static method
+  + **`Argon2idPasswordHasher.PhcPrefix`** const (`"$argon2id$"`).
+  Allocation-free, null-safe sniff test for callers writing their own
+  routing logic over a heterogeneous password column. Use alongside
+  `MigratingPasswordHasher<TUser>` (which now uses this internally) or
+  standalone in admin / data-audit tooling.
+- **NuGet package icon.** Both packages now ship `icon.png` and render
+  with a proper visual identity on nuget.org listings and search
+  results. Source-of-truth is `assets/Generate-Icon.ps1` — Windows
+  PowerShell + `System.Drawing.Common`, deterministic output, no
+  extra tooling required to regenerate.
+
+### Changed
+
+- `MigratingPasswordHasher<TUser>` consolidated to use the new
+  public `Argon2idPasswordHasher.IsArgon2idHash`; the duplicated
+  internal helper + constant are removed. Behavior unchanged.
+
+### Tests
+
+- New **`IsArgon2idHashTests`** (14 cases) covering null/empty,
+  wrong-variant, case-sensitivity, peppered hashes, the library's
+  own emitted output round-tripping the sniff test, and a constant
+  lock between `PhcPrefix` and the emitted prefix.
+- New **`UserManagerIntegrationTests`** (6 cases) driving the real
+  ASP.NET Core Identity `UserManager<TUser>` pipeline end-to-end —
+  proving `CreateAsync` → `CheckPasswordAsync` works, that rehash-on-
+  login transparently upgrades a weaker stored hash through the
+  Identity layer, and that `AddArgon2idPasswordHasherWithMigration`
+  upgrades a pre-loaded PBKDF2 hash on first successful login.
+  Full suite: **441 tests** across net8 + net9 + net10 (was 381).
+
 ## [0.4.0-preview.2] — 2026-05-30
 
 ### Removed
@@ -198,7 +234,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decoding, constant-time verification, `NeedsRehash` for transparent
   work-factor upgrades.
 
-[Unreleased]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.2...HEAD
+[Unreleased]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.3...HEAD
+[0.4.0-preview.3]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.2...v0.4.0-preview.3
 [0.4.0-preview.2]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.1...v0.4.0-preview.2
 [0.4.0-preview.1]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.3.0-preview.1...v0.4.0-preview.1
 [0.3.0-preview.1]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.2.0-preview.1...v0.3.0-preview.1

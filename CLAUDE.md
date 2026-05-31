@@ -79,7 +79,7 @@ with the core type (different arity, different namespace).
 
 ## Packaging
 
-- Versioning is SemVer with preview suffixes (e.g. `0.4.0-preview.2`).
+- Versioning is SemVer with preview suffixes (e.g. `0.4.0-preview.3`).
 - Single `<Version>` source of truth in `Directory.Build.props`.
 - Full NuGet metadata + SourceLink + deterministic builds + `NuGetAudit` are
   set in the `.csproj` and `Directory.Build.props`. Keep them in sync when

@@ -13,8 +13,8 @@ body:
     id: package-version
     attributes:
       label: Package version
-      description: e.g. `0.4.0-preview.2`
-      placeholder: "0.4.0-preview.2"
+      description: e.g. `0.4.0-preview.3`
+      placeholder: "0.4.0-preview.3"
     validations:
       required: true
 
