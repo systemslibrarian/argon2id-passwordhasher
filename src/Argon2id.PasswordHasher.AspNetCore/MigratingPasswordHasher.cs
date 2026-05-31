@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 
+using CoreHasher = Argon2id.PasswordHasher.Argon2idPasswordHasher;
+
 namespace Argon2id.PasswordHasher.AspNetCore;
 
 /// <summary>
@@ -37,9 +39,6 @@ namespace Argon2id.PasswordHasher.AspNetCore;
 public sealed class MigratingPasswordHasher<TUser> : IPasswordHasher<TUser>
     where TUser : class
 {
-    /// <summary>The PHC algorithm prefix the routing logic uses.</summary>
-    internal const string Argon2idPhcPrefix = "$argon2id$";
-
     private readonly Argon2idPasswordHasher<TUser> _argon2id;
     private readonly IPasswordHasher<TUser> _legacy;
 
@@ -81,7 +80,7 @@ public sealed class MigratingPasswordHasher<TUser> : IPasswordHasher<TUser>
         string hashedPassword,
         string providedPassword)
     {
-        if (IsArgon2idHash(hashedPassword))
+        if (CoreHasher.IsArgon2idHash(hashedPassword))
         {
             return _argon2id.VerifyHashedPassword(user, hashedPassword, providedPassword);
         }
@@ -113,7 +112,4 @@ public sealed class MigratingPasswordHasher<TUser> : IPasswordHasher<TUser>
         };
     }
 
-    private static bool IsArgon2idHash(string? hashedPassword) =>
-        hashedPassword is not null
-        && hashedPassword.StartsWith(Argon2idPhcPrefix, StringComparison.Ordinal);
 }

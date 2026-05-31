@@ -25,6 +25,8 @@ Argon2id.PasswordHasher.Argon2idOptions.SaltSizeBytes.set -> void
 Argon2id.PasswordHasher.Argon2idOptions.Validate() -> void
 Argon2id.PasswordHasher.Argon2idPasswordHasher
 Argon2id.PasswordHasher.Argon2idPasswordHasher.Argon2idPasswordHasher() -> void
+const Argon2id.PasswordHasher.Argon2idPasswordHasher.PhcPrefix = "$argon2id$" -> string!
+static Argon2id.PasswordHasher.Argon2idPasswordHasher.IsArgon2idHash(string? encodedHash) -> bool
 Argon2id.PasswordHasher.Argon2idPasswordHasher.Argon2idPasswordHasher(Argon2id.PasswordHasher.Argon2idOptions! options) -> void
 Argon2id.PasswordHasher.Argon2idPasswordHasher.Argon2idPasswordHasher(Argon2id.PasswordHasher.Argon2idOptions! options, Argon2id.PasswordHasher.PepperRing? pepper) -> void
 Argon2id.PasswordHasher.Argon2idPasswordHasher.HashPassword(System.ReadOnlySpan<byte> password) -> string!

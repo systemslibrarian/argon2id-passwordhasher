@@ -74,6 +74,34 @@ public sealed class Argon2idPasswordHasher
     /// <summary>The parameters this hasher uses when producing new hashes.</summary>
     public Argon2idOptions Options => _options;
 
+    /// <summary>The PHC algorithm prefix every Argon2id hash begins with.</summary>
+    /// <remarks>
+    /// Exposed so callers writing their own routing logic over a heterogeneous
+    /// password column don't have to hard-code the literal. Combine with
+    /// <see cref="IsArgon2idHash(string?)"/> for a one-line sniff test.
+    /// </remarks>
+    public const string PhcPrefix = "$argon2id$";
+
+    /// <summary>
+    /// Quick, allocation-free sniff test: returns <see langword="true"/> when the
+    /// stored value looks like an Argon2id PHC string (begins with <c>$argon2id$</c>).
+    /// </summary>
+    /// <remarks>
+    /// This does NOT validate the parameters, the salt, or the tag &#8212; only
+    /// that the algorithm prefix matches. Use it for routing decisions
+    /// (Argon2id vs legacy hasher) before calling <see cref="VerifyPassword(string, string)"/>;
+    /// verify itself will reject malformed structure and return <see langword="false"/>.
+    /// </remarks>
+    /// <param name="encodedHash">The candidate stored value.</param>
+    /// <returns>
+    /// <see langword="true"/> if <paramref name="encodedHash"/> begins with the
+    /// Argon2id PHC prefix; <see langword="false"/> for <see langword="null"/>,
+    /// empty, or any other prefix.
+    /// </returns>
+    public static bool IsArgon2idHash(string? encodedHash) =>
+        encodedHash is not null
+        && encodedHash.StartsWith(PhcPrefix, StringComparison.Ordinal);
+
     /// <summary>
     /// Hashes a password with a fresh random salt and returns a PHC-formatted string
     /// suitable for storage (for example, in an <c>AspNetUsers.PasswordHash</c> column).
