@@ -52,3 +52,6 @@ geminisuggestions.md
 
 # BenchmarkDotNet results — regenerated on every run.
 BenchmarkDotNet.Artifacts/
+
+# Local SBOMs generated during manual release. Workflow regenerates them per run.
+sbom/
