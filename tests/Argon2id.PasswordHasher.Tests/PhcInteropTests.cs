@@ -103,4 +103,92 @@ public class PhcInteropTests
         string hash = hasher.HashPassword("matrix");
         Assert.True(hasher.VerifyPassword("matrix", hash));
     }
+
+    /// <summary>
+    /// Pinned Known-Answer Vector (KAT) for Argon2id.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Guards against a silent regression in the underlying Konscious
+    /// managed Argon2 port: a future Konscious release that still
+    /// self-round-trips (so our other tests pass) but produces a tag
+    /// that diverges from the standard Argon2id output would fail this
+    /// test loudly.
+    /// </para>
+    /// <para>
+    /// <b>Vector provenance.</b> The expected tag below was computed
+    /// against the official Argon2 reference C implementation via
+    /// <c>argon2-cffi</c> 25.1.0 (<c>ARGON2_VERSION = 0x13</c>) and then
+    /// cross-checked against Konscious 1.3.1 — the version pinned in
+    /// this repository's csproj. Both implementations agreed on the
+    /// tag bytes before this test was added.
+    /// </para>
+    /// <para>
+    /// Inputs:
+    /// <list type="bullet">
+    ///   <item><description>password = UTF-8 of <c>"kat-vector-password"</c> (19 bytes)</description></item>
+    ///   <item><description>salt = UTF-8 of <c>"kat-vector-salt!"</c> (16 bytes)</description></item>
+    ///   <item><description>m = 8192 KiB, t = 1, p = 1</description></item>
+    ///   <item><description>tag length = 32 bytes</description></item>
+    ///   <item><description>no secret (no pepper), no associated data, version 0x13 (19), Argon2id</description></item>
+    /// </list>
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public void Verify_KnownAnswerVector_MatchesExpectedTag()
+    {
+        byte[] password = System.Text.Encoding.UTF8.GetBytes("kat-vector-password");
+        byte[] salt = System.Text.Encoding.UTF8.GetBytes("kat-vector-salt!");
+        Assert.Equal(16, salt.Length); // sanity: PHC-compatible salt length
+
+        const int memoryKib = 8192;
+        const int iterations = 1;
+        const int parallelism = 1;
+        const int hashLen = 32;
+
+        // Reference C output (argon2-cffi 25.1.0, ARGON2_VERSION=0x13).
+        // Cross-checked against Konscious 1.3.1; both agree.
+        // Uppercase because that is what Convert.ToHexString emits — CA1308
+        // (analyzer-as-error) forbids the .ToLowerInvariant() that would
+        // otherwise let us write the more conventional lowercase form.
+        const string expectedHex =
+            "BF9FA3EBC6545650570F4D0D1EDB32A62ED38CC0423D58D77D5A47475D35A2FA";
+
+        // (1) Konscious 1.3.1 must produce exactly this tag for these inputs.
+        byte[] tag;
+        using (var argon2 = new Konscious.Security.Cryptography.Argon2id(password)
+        {
+            Salt = salt,
+            MemorySize = memoryKib,
+            Iterations = iterations,
+            DegreeOfParallelism = parallelism,
+        })
+        {
+            tag = argon2.GetBytes(hashLen);
+        }
+
+        Assert.Equal(expectedHex, Convert.ToHexString(tag));
+
+        // (2) The library's public verify path must accept the PHC string
+        // built from those bytes — proves the parser, recompute, and
+        // FixedTimeEquals path are all wired to the same vector.
+        string phc =
+            "$argon2id$v=19$"
+            + $"m={memoryKib},t={iterations},p={parallelism}$"
+            + Convert.ToBase64String(salt).TrimEnd('=') + "$"
+            + Convert.ToBase64String(tag).TrimEnd('=');
+
+        var hasher = new Argon2idPasswordHasher(new Argon2idOptions
+        {
+            MemorySizeKib = memoryKib,
+            Iterations = iterations,
+            DegreeOfParallelism = parallelism,
+        });
+
+        Assert.True(
+            hasher.VerifyPassword("kat-vector-password", phc),
+            "Library verify path rejected the pinned KAT — "
+            + "either Konscious or the verify path drifted from the reference implementation.");
+        Assert.False(hasher.VerifyPassword("wrong-password", phc));
+    }
 }

@@ -1,5 +1,32 @@
 # Pepper key management
 
+> [!WARNING]
+> ## Before you start: back up your pepper ring
+>
+> Peppering is a one-way door. The library never persists pepper key bytes; if
+> the active key is lost (vault wipe, no backup, an `unset` on the env var the
+> secret was bound to), **every user hashed under that key is locked out** —
+> their hashes cannot be verified again and the only remediation is a full
+> password-reset flow.
+>
+> Before you flip pepper on in production:
+>
+> 1. **Decide where the canonical key lives** (Key Vault, Secrets Manager,
+>    Vault, etc.) and write it down.
+> 2. **Back up that material to a separate trust domain** — a different cloud
+>    account, a different KMS envelope, or an offline ciphertext under a
+>    paper-recovery key. A single-system breach should not lose both the DB
+>    and the pepper at once.
+> 3. **Document the recovery runbook** so an on-call engineer at 3 a.m. knows
+>    where to look. The library cannot reconstruct lost key material; nobody
+>    can.
+> 4. **Never reuse a pepper id.** The id is in the hash; rebinding an id to
+>    different bytes silently breaks every old hash carrying it.
+>
+> The [rotation playbook](#rotation-playbook) below assumes these four steps
+> are in place. If they aren't yet, wire them up first — peppering without
+> backups is a footgun aimed at your own user base.
+
 This guide is for teams that want to use a pepper with
 `Argon2id.PasswordHasher` and need the key material to come from a
 real secret store — Azure Key Vault, AWS KMS / Secrets Manager,

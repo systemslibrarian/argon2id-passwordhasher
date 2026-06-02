@@ -255,6 +255,15 @@ key vault, KMS, or environment variable). If your password table leaks but the p
 stolen hashes can't be cracked offline. Peppers here are **keyed and rotatable** — each hash records
 *which* pepper produced it (via the PHC `keyid`), and the key bytes are never stored.
 
+> [!WARNING]
+> **Lose your pepper ring, lose your users.** The library never persists pepper keys — that's your
+> responsibility. Hashes made with a pepper key cannot be verified without that key's bytes; there
+> is no recovery path. If the active key is lost, every user whose hash was produced under it must
+> go through a password reset. **Back up active and retired pepper material to a separate trust
+> domain** before you enable peppering. See
+> [`docs/pepper-key-management.md`](docs/pepper-key-management.md) and
+> [`KNOWN-GAPS.md`](KNOWN-GAPS.md) §2.
+
 ```csharp
 byte[] key = GetPepperFromVault();             // ≥ 16 bytes, kept secret
 var ring   = new PepperRing(new Pepper("2026-05", key));
@@ -272,10 +281,6 @@ var rotated = new PepperRing(
     active:  new Pepper("2026-11", newKey),
     retired: new Pepper("2026-05", oldKey));
 ```
-
-> [!WARNING]
-> The library never persists pepper keys — that's your responsibility. **Lose the active key and
-> you lose the ability to verify hashes made with it.** Back up and retire keys deliberately.
 
 For end-to-end examples of loading peppers from **Azure Key Vault, AWS Secrets Manager,
 Google Cloud Secret Manager, HashiCorp Vault**, or environment variables, plus the full
@@ -470,7 +475,7 @@ issue build-provenance attestations, and create a GitHub Release with all artifa
 
 ## Versioning & status
 
-`0.4.0-preview.3` — **preview**. Follows SemVer with preview suffixes. The API and defaults may
+`0.4.0-preview.4` — **preview**. Follows SemVer with preview suffixes. The API and defaults may
 still change before `1.0.0`; hashes use the standard PHC format and are expected to stay verifiable.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full version history.
@@ -490,7 +495,12 @@ open public issues for security reports.
 attributions.
 
 Built on [Konscious.Security.Cryptography.Argon2](https://github.com/kmaragon/Konscious.Security.Cryptography),
-an MIT-licensed managed Argon2 implementation. Parameter guidance follows
+an MIT-licensed managed Argon2 implementation. We chose a managed port over the reference C /
+libsodium so the package ships with no P/Invoke surface and runs unchanged under trimming, Native
+AOT, and Blazor WebAssembly; that trade-off and how we mitigate it (version pin, `NuGetAudit`,
+Dependabot, a pinned KAT cross-checked against the reference implementation) are documented in
+[`SECURITY.md`](SECURITY.md#implementation-choice--dependency-posture) and
+[`KNOWN-GAPS.md`](KNOWN-GAPS.md) §12. Parameter guidance follows
 [RFC 9106](https://www.rfc-editor.org/rfc/rfc9106) and the
 [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
 

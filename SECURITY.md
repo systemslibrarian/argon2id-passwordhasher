@@ -81,3 +81,63 @@ This library follows:
 
 Default parameters (`m = 64 MiB`, `t = 3`, `p = 1`) exceed the current OWASP minimum.
 Operators should still benchmark on their own hardware and tune to their latency budget.
+
+## Implementation choice & dependency posture
+
+This library does not implement Argon2id itself. The actual memory-hard
+computation is delegated to
+[**Konscious.Security.Cryptography.Argon2**](https://github.com/kmaragon/Konscious.Security.Cryptography),
+an MIT-licensed managed C# implementation. That choice is deliberate and has
+trade-offs worth naming:
+
+- **Why a managed implementation rather than the reference C / libsodium.**
+  A pure-.NET Argon2 ships without a P/Invoke dependency, runs unchanged on
+  every platform .NET runs on (Windows, Linux, macOS, Blazor WebAssembly, and
+  Native AOT), and keeps the package trimmable. A `libsodium`-backed wrapper
+  would be faster on raw throughput but would re-introduce a native dependency
+  per RID and would not work in the WASM demo.
+- **What we give up.** Managed Argon2 ports have historically had subtle
+  issues in older versions (off-by-one allocations, wrong index in the
+  reference-block path, etc.). We accept this trade-off but it is the most
+  load-bearing third-party dependency in the package and we treat it as such.
+- **What we do about it.**
+  - Konscious is **pinned at `>= 1.3.1`** (an exact version reference in the
+    csproj). Bumping it is a deliberate maintainer action, gated by a
+    code review of the upstream diff.
+  - Every build runs **`NuGetAudit` at `low` severity over all transitive
+    dependencies** — see `Directory.Build.props`. A future advisory on
+    Konscious (or its `Konscious.Security.Cryptography.Blake2` dependency)
+    surfaces as a build warning on the first build after the advisory lands.
+  - **Dependabot** opens grouped PRs for the `nuget` ecosystem weekly. A
+    Konscious release shows up there with the upstream changelog attached
+    for review.
+  - A **pinned known-answer-vector (KAT) test** in
+    `tests/Argon2id.PasswordHasher.Tests/PhcInteropTests.cs` locks the
+    Argon2id output of fixed inputs at known parameters. The expected tag
+    was computed against the reference C implementation (via `argon2-cffi`)
+    and cross-checked against Konscious 1.3.1; a future Konscious regression
+    that still self-round-trips but diverges from the standard output fails
+    the build.
+- **Vulnerabilities in Konscious itself remain out of scope for this repo's
+  Security Advisories** — report those upstream. We will help coordinate
+  disclosure where it affects users of this package.
+
+### Side-channel posture
+
+The final tag comparison is constant-time
+(`CryptographicOperations.FixedTimeEquals`). The **Argon2id round itself may
+have data-dependent timing** on the second half of each pass (Argon2id is
+intentionally data-dependent in that region — that is what makes it Argon2
+**id** rather than Argon2i). This is the accepted RFC 9106 posture for
+password hashing on a server you control; the password isn't recovered by
+timing the round even if a local adversary could observe it precisely,
+because the round is memory-hard and the time signal is dominated by memory
+access patterns of values the attacker would already need to know the
+password to predict.
+
+One additional timing observable, documented for honesty: if the stored hash
+references a `keyid` the live `PepperRing` does not hold, verify fails fast
+(it returns before doing the full Argon2id round). The keyid is already part
+of the public PHC string, so this timing signal does not disclose any value
+an attacker who reads the stored hash does not already have. See
+[`KNOWN-GAPS.md`](KNOWN-GAPS.md) §12 for the long form.

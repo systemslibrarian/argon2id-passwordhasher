@@ -24,8 +24,8 @@ packed artifacts and run the push by hand catches:
 - Accidental tags pushed from a stale or wrong branch
 - Versions where the test matrix passed but the resulting package
   is somehow off (icon, metadata, missing assets)
-- Pre-1.0 preview-bump mistakes (e.g. tagging `v0.4.0-preview.3`
-  when the CHANGELOG/version property still says `0.3`)
+- Pre-1.0 preview-bump mistakes (e.g. tagging `v0.4.0-preview.4`
+  when the CHANGELOG/version property still says `v0.4.0-preview.3`)
 
 Once the project is post-1.0 and release cadence stabilizes, this
 policy can be revisited.
@@ -35,7 +35,7 @@ policy can be revisited.
 1. **Local clone** of the repo, on the tagged commit:
    ```bash
    git fetch --tags
-   git checkout v0.4.0-preview.3
+   git checkout v0.4.0-preview.4
    ```
 2. **NuGet API key** stored locally at the repo root in `.nuget-api-key`
    (already covered by `.gitignore`). The key on nuget.org should be
@@ -66,7 +66,7 @@ ls artifacts/  # should show 2 .nupkg + 2 .snupkg at the tagged version
 ### Option B — download the GitHub-Release-built artifacts
 
 ```bash
-gh release download v0.4.0-preview.3 \
+gh release download v0.4.0-preview.4 \
   --repo systemslibrarian/argon2id-passwordhasher \
   --pattern '*.nupkg' \
   --pattern '*.snupkg' \
@@ -84,9 +84,9 @@ each artifact's GitHub-issued provenance attestation matches the
 expected source repo and ref:
 
 ```bash
-gh attestation verify artifacts/Argon2id.PasswordHasher.0.4.0-preview.3.nupkg \
+gh attestation verify artifacts/Argon2id.PasswordHasher.0.4.0-preview.4.nupkg \
   --repo systemslibrarian/argon2id-passwordhasher
-gh attestation verify artifacts/Argon2id.PasswordHasher.AspNetCore.0.4.0-preview.3.nupkg \
+gh attestation verify artifacts/Argon2id.PasswordHasher.AspNetCore.0.4.0-preview.4.nupkg \
   --repo systemslibrarian/argon2id-passwordhasher
 ```
 
@@ -102,12 +102,12 @@ KEY="$(cat .nuget-api-key | tr -d '\r\n')"
 # Push each .nupkg individually — dotnet auto-discovers and pushes the
 # matching .snupkg to the symbols server. --skip-duplicate makes the
 # command idempotent if the version already exists on NuGet.
-dotnet nuget push artifacts/Argon2id.PasswordHasher.0.4.0-preview.3.nupkg \
+dotnet nuget push artifacts/Argon2id.PasswordHasher.0.4.0-preview.4.nupkg \
   --api-key "$KEY" \
   --source https://api.nuget.org/v3/index.json \
   --skip-duplicate
 
-dotnet nuget push artifacts/Argon2id.PasswordHasher.AspNetCore.0.4.0-preview.3.nupkg \
+dotnet nuget push artifacts/Argon2id.PasswordHasher.AspNetCore.0.4.0-preview.4.nupkg \
   --api-key "$KEY" \
   --source https://api.nuget.org/v3/index.json \
   --skip-duplicate
@@ -134,9 +134,9 @@ step" status banner — the workflow inserts it because at the moment
 of release creation, the publish hasn't happened yet:
 
 ```bash
-gh release edit v0.4.0-preview.3 \
+gh release edit v0.4.0-preview.4 \
   --repo systemslibrarian/argon2id-passwordhasher \
-  --notes "$(gh release view v0.4.0-preview.3 --json body -q .body \
+  --notes "$(gh release view v0.4.0-preview.4 --json body -q .body \
     | sed '/^## Status/,/^## Auto-generated notes$/d')"
 ```
 

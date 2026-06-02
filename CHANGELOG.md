@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0-preview.4] — 2026-06-01
+
+### Changed
+
+- **`SECURITY.md`** now carries an explicit "Implementation choice & dependency
+  posture" section naming the managed-Argon2 trade-off (pure-.NET vs reference
+  C / libsodium), the Konscious version-pin policy (`>= 1.3.1`, exact-version
+  reference), and the build-time mitigations (`NuGetAudit` over all transitive
+  dependencies, weekly Dependabot, a pinned KAT). A short "Side-channel
+  posture" sub-section makes clear that the final tag comparison is
+  constant-time but the Argon2id round itself is not, and that an
+  unknown-`keyid` verify fast-fails — both expected, neither over-claimed.
+- **`KNOWN-GAPS.md` §12 (new)** captures the same managed-Argon2 trade-off in
+  the gaps register, including the honest Argon2id-round-timing posture and
+  the pepper-keyid early-return note.
+- **`KNOWN-GAPS.md` §2 (pepper)** restructured so the "lose your pepper ring,
+  lose your users" warning is a standalone bolded sub-bullet rather than a
+  single line of prose, with a `keyid=` `LIKE`-query pattern operators can use
+  to size the blast radius of a retired-key loss.
+- **`README.md`** pepper section: the `[!WARNING]` callout moved up to precede
+  the pepper code example (instead of following the rotation example), with
+  stronger framing about backups. "License & acknowledgements" now links to
+  `SECURITY.md` / `KNOWN-GAPS.md §12` next to the Konscious credit so the
+  trade-off is one click away from the front door.
+- **`docs/pepper-key-management.md`** now opens with a "Before you start: back
+  up your pepper ring" callout enumerating the four prerequisites (canonical
+  store, backup to a separate trust domain, written recovery runbook, never
+  reuse a pepper id) before the first code example.
+
+### Tests
+
+- New **`PhcInteropTests.Verify_KnownAnswerVector_MatchesExpectedTag`** —
+  Argon2id Known-Answer-Vector test with a pinned expected tag for fixed
+  password / salt / parameters. The expected hex
+  (`bf9fa3eb…5d35a2fa`) was computed against the official Argon2 reference
+  C implementation via `argon2-cffi` 25.1.0 and cross-checked against
+  Konscious 1.3.1 before being committed. Guards against a future Konscious
+  regression that still self-round-trips but diverges from the standard
+  Argon2id output.
+
+### Notes
+
+- This is documentation + a test. **No production code changes; no version
+  bump.** `Argon2idPasswordHasher` (`FixedTimeEquals`, stored-parameter
+  verification, the `finally` zeroing pattern) is untouched; the default
+  `Argon2idOptions` are untouched; the public `Pepper` / `PepperRing` surface
+  is untouched. The Konscious version pin in
+  `src/Argon2id.PasswordHasher/Argon2id.PasswordHasher.csproj` is unchanged
+  — it was already at the intended `>= 1.3.1` floor. The doc work above
+  records *why* that pin is the floor.
+
 ## [0.4.0-preview.3] — 2026-05-30
 
 ### Added
@@ -234,7 +285,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decoding, constant-time verification, `NeedsRehash` for transparent
   work-factor upgrades.
 
-[Unreleased]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.3...HEAD
+[Unreleased]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.4...HEAD
+[0.4.0-preview.4]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.3...v0.4.0-preview.4
 [0.4.0-preview.3]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.2...v0.4.0-preview.3
 [0.4.0-preview.2]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.1...v0.4.0-preview.2
 [0.4.0-preview.1]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.3.0-preview.1...v0.4.0-preview.1

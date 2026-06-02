@@ -6,7 +6,7 @@ trust by being honest about their edges. If something here surprises you, that i
 the document doing its job.
 
 Nothing below is a secret defect — these are conscious scope decisions as of
-the `0.4.0-preview.3` release.
+the `0.4.0-preview.4` release.
 
 ## 1. Plaintext `string` password lifetime
 
@@ -35,8 +35,27 @@ Remaining caveats you own:
 
 - **Key storage is yours.** The library never persists pepper keys; keep them in
   a vault / KMS / env var, not in source or the database.
-- **Lose the active key and you lose the ability to verify** hashes made with it
-  — treat retirement and backups deliberately.
+
+- **⚠️ Lose your pepper ring, lose your users.** This is the single biggest
+  operational risk of opting into peppering, so it gets its own bullet:
+
+  - Hashes made with a pepper **cannot be verified** without the key bytes that
+    produced them. The library has no recovery path; it fails closed by design.
+  - If the **active** pepper key is lost (vault wipe, single-region key store
+    with no backup, an `unset` on the env var the secret was bound to), every
+    user whose password hash was produced under that key must go through a
+    full password-reset flow. There is no offline reconstruction.
+  - If a **retired** pepper key is lost while any stored hash still references
+    its id, the same is true for the slice of users still on that key. A
+    `SELECT COUNT(*) WHERE PasswordHash LIKE '%keyid=<old-id-b64>%'`
+    interrogation of your user table tells you the blast radius before you
+    drop a retired key.
+  - **Back up active and retired pepper material to a separate trust domain**
+    (different cloud account, different KMS key envelope, offline ciphertext)
+    so a single-system breach does not lose both your DB and the pepper at
+    once. See [`docs/pepper-key-management.md`](docs/pepper-key-management.md)
+    for the full rotation playbook.
+
 - The pepper is applied via the underlying library's `KnownSecret`; we do not
   yet expose Argon2's separate *associated data* field (see §3).
 
@@ -81,7 +100,7 @@ your expected concurrency. This is inherent to memory-hard hashing, not a bug.
 
 ## 9. Preview API stability
 
-This is `0.4.0-preview.3`. The API, defaults, and PHC handling may change before
+This is `0.4.0-preview.4`. The API, defaults, and PHC handling may change before
 `1.0.0`. Hashes produced now use the standard PHC format and are expected to
 remain verifiable, but treat the surface as not-yet-frozen. The
 `PublicApiAnalyzers`-tracked surface (`PublicAPI.Shipped.txt`,
@@ -106,6 +125,51 @@ independent cryptographic-review firm. This is on the roadmap and is
 the most-asked-about gap during enterprise procurement; pre-audit, the
 library should be treated as a high-quality open-source dependency
 rather than a vendor-attested platform component.
+
+## 12. Managed Argon2 implementation, not the reference C / libsodium
+
+The Argon2id round itself is delegated to
+[**Konscious.Security.Cryptography.Argon2**](https://github.com/kmaragon/Konscious.Security.Cryptography),
+a managed C# port — not the
+[official Argon2 reference C implementation](https://github.com/P-H-C/phc-winner-argon2)
+and not a `libsodium` P/Invoke wrapper. This is a deliberate trade-off and
+worth naming explicitly.
+
+- **Why the managed port.** A pure-.NET Argon2 ships without a P/Invoke
+  surface and runs unchanged on every platform .NET runs on, including the
+  Blazor WebAssembly demo and Native AOT publishes where a native dependency
+  would be painful or impossible. Trimming and AOT correctness are properties
+  the package advertises and they depend on this choice.
+- **What we give up.** Managed Argon2 ports have historically had subtle
+  issues in older versions (off-by-one allocations, wrong index in the
+  reference-block path). Konscious 1.3.1 is, to the best of our review, a
+  faithful implementation — we pin to it as a floor, run a known-answer-vector
+  test that locks the standard Argon2id output of a fixed input against the
+  reference C implementation, and gate any version bump on a maintainer review
+  of the upstream diff plus a `NuGetAudit` clean pass plus a green KAT.
+- **What you can do about it on your side.** If you need a `libsodium`- or
+  reference-C-backed implementation for a compliance reason, this is not the
+  library for you yet — open an issue describing the requirement.
+
+### Argon2 round timing — the honest version
+
+The library's final tag comparison uses
+`CryptographicOperations.FixedTimeEquals`, which is constant-time over the
+tag bytes. The **Argon2id round itself is not constant-time** — Argon2id is
+intentionally data-dependent on the second half of each pass (that is what
+distinguishes it from Argon2i). RFC 9106 considers this acceptable for
+password hashing on a server you control; the time signal is dominated by
+memory-access patterns of values an attacker would need to know the password
+to predict, and the memory-hard cost is the primary defense regardless.
+
+One additional timing observable, documented so we don't over-claim: when a
+stored hash carries a `keyid=…` PHC parameter the live `PepperRing` does not
+hold, `Verify` returns **before** running the full Argon2id round. That is
+faster than a normal wrong-password verify, which runs the full round and
+then loses the `FixedTimeEquals` comparison. The keyid is part of the public
+PHC string the attacker can already read, so this fast-fail does not disclose
+any value they don't already have — but it would be wrong to call the verify
+path globally constant-time, and we don't.
 
 ---
 
