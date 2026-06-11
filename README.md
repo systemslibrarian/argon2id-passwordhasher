@@ -478,7 +478,7 @@ issue build-provenance attestations, and create a GitHub Release with all artifa
 
 ## Versioning & status
 
-`0.4.0-preview.4` — **preview**. Follows SemVer with preview suffixes. The API and defaults may
+`0.4.0-preview.5` — **preview**. Follows SemVer with preview suffixes. The API and defaults may
 still change before `1.0.0`; hashes use the standard PHC format and are expected to stay verifiable.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full version history.
