@@ -98,6 +98,17 @@ attacker who can trigger many concurrent hash operations could pressure server
 memory. Mitigate with request rate limiting and by sizing parameters against
 your expected concurrency. This is inherent to memory-hard hashing, not a bug.
 
+What is **not** inherent — and is now closed — is the *stored-hash* variant:
+verification recomputes Argon2id with the parameters embedded in the stored
+string, so a crafted row (e.g. `m=2147483647`) could previously drive a
+multi-terabyte allocation attempt. The parser now rejects stored hashes whose
+parameters exceed hard caps (`m` ≤ 4 GiB, `t` ≤ 1024, `p` ≤ 128, salt 8–64
+bytes, tag 16–512 bytes, `keyid` ≤ 64 bytes), and `VerifyPassword` returns
+`false` for them. The honest flip side: a hash legitimately produced elsewhere
+with parameters above those caps will not verify here. The caps sit far above
+any sane production configuration, and `Argon2idOptions.Validate()` enforces
+the same bounds, so the library can never emit a hash its own parser rejects.
+
 ## 9. Preview API stability
 
 This is `0.4.0-preview.4`. The API, defaults, and PHC handling may change before
@@ -143,10 +154,14 @@ worth naming explicitly.
 - **What we give up.** Managed Argon2 ports have historically had subtle
   issues in older versions (off-by-one allocations, wrong index in the
   reference-block path). Konscious 1.3.1 is, to the best of our review, a
-  faithful implementation — we pin to it as a floor, run a known-answer-vector
-  test that locks the standard Argon2id output of a fixed input against the
-  reference C implementation, and gate any version bump on a maintainer review
-  of the upstream diff plus a `NuGetAudit` clean pass plus a green KAT.
+  faithful implementation — we pin to it as a floor and continuously check it
+  from several independent directions: a known-answer-vector corpus
+  (including the RFC 9106 §5.3 Argon2id vector with secret + associated
+  data), differential testing against a second independent managed
+  implementation (Isopoh) with a randomized parameter matrix re-seeded
+  nightly, and property-based round-trip tests. Any version bump is gated on
+  a maintainer review of the upstream diff plus a `NuGetAudit` clean pass
+  plus all of the above staying green.
 - **What you can do about it on your side.** If you need a `libsodium`- or
   reference-C-backed implementation for a compliance reason, this is not the
   library for you yet — open an issue describing the requirement.

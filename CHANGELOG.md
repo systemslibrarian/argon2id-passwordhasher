@@ -7,6 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Verification-side resource caps in the PHC parser.** `TryParse` now
+  rejects stored hashes whose declared parameters exceed hard caps
+  (`m` > 4 GiB, `t` > 1024, `p` > 128, `m` < 8·`p`, salt outside 8–64 bytes,
+  tag outside 16–512 bytes, `keyid` > 64 bytes). Previously a crafted stored
+  hash (e.g. `m=2147483647`) could drive a multi-terabyte allocation attempt
+  during verification. `VerifyPassword` still returns `false` (never throws)
+  for such inputs; `Argon2idOptions.Validate()` now enforces the same upper
+  bounds so the library can never emit a hash its own parser rejects. The
+  parser also rejects `keyid` payloads that are not valid UTF-8, since a
+  pepper id is a string and invalid bytes cannot round-trip losslessly.
+
+### Added
+
+- **Coverage-guided fuzzing** of the PHC parser: SharpFuzz/libFuzzer harness
+  (`fuzz/`), a committed seed corpus, a nightly fuzz workflow, and
+  `FuzzCorpusReplayTests` which replays every corpus input as a plain unit
+  test on every CI run.
+- **Property-based tests** (CsCheck): parser totality on arbitrary and
+  adversarial inputs, encode→parse identity, hash→verify round-trips for
+  arbitrary Unicode passwords.
+- **Differential testing** against Isopoh.Cryptography.Argon2 (an
+  independent managed Argon2 implementation): fixed matrix in regular CI,
+  randomized matrix re-seeded nightly (`differential.yml`).
+- **Cross-ecosystem KAT corpus** (`tests/.../TestData/argon2id-vectors.json`)
+  with provenance per vector, including the RFC 9106 §5.3 Argon2id test
+  vector exercised with secret + associated data, plus verbatim PHC strings
+  emitted by the reference-C `libargon2` (via argon2-cffi) — covering a
+  64-byte tag, `p=2` lanes, and a Unicode (astral-codepoint) password — each
+  verified through the public API.
+- **Mutation testing** (Stryker.NET): weekly workflow with a
+  mutation-score break threshold (`mutation.yml`, `stryker-config.json`).
+- **Reproducible-build verification**: CI now builds + packs twice from a
+  clean tree and fails if assemblies differ byte-for-byte; documented SLSA
+  position in `COMPLIANCE.md`.
+- **Line-coverage threshold gate** (coverlet, 80% line) in CI.
+- **Native AOT smoke test** (`samples/Argon2id.PasswordHasher.AotSmokeTest`):
+  CI publishes a trimmed Native AOT binary and runs it, proving the
+  `IsAotCompatible` claim end to end.
+- **Hardware calibration tool** (`tools/Argon2id.PasswordHasher.Calibration`):
+  measures Argon2id latency on the host and recommends the strongest
+  `Argon2idOptions` that fit a target latency budget.
+- **Docs**: migration guides (ASP.NET Core Identity/PBKDF2 and BCrypt) on
+  the docs site; pepper & key-management article added to the site TOC.
+- **`EnablePackageValidation`** on both shipped packages, with
+  `PackageValidationBaselineVersion` pinned to `0.4.0-preview.4` so every
+  pack verifies binary compatibility against the last published release.
+
+### Changed
+
+- **All GitHub Actions are pinned to full commit SHAs** (with the
+  human-readable tag retained as a trailing comment) across every workflow,
+  removing the mutable-tag supply-chain risk flagged by OpenSSF Scorecard.
+
+### Fixed
+
+- **`release.yml` now passes GitHub workflow validation.** Its
+  release-notes preamble was a column-0 heredoc body inside a `run: |`
+  block scalar; the dedent terminated the scalar early and made the whole
+  file invalid YAML, so the workflow was silently rejected before any job
+  ran (every tag push since 0.4.0-preview.1 produced no GitHub Release).
+  The preamble is now a single ANSI-C-quoted string prepended to the
+  API-generated notes — no heredoc, no dedent.
+
 ## [0.4.0-preview.4] — 2026-06-01
 
 ### Changed

@@ -21,6 +21,11 @@ bool ok = hasher.VerifyPassword("correct horse battery staple", stored); // true
 
 - **[Parameter tuning](parameter-tuning.md)** — how to pick `m`, `t`, `p` for
   *your* hardware and your latency budget.
+- **[Pepper & key management](pepper-key-management.md)** — keyed hashing,
+  rotation, and loading the pepper from a vault/KMS.
+- **Migrating an existing user store** — from
+  [ASP.NET Core Identity (PBKDF2)](migrate-from-identity.md) or
+  [BCrypt](migrate-from-bcrypt.md), with zero downtime and no forced resets.
 - **[API reference](api/index.md)** — every public type, generated from the source
   XML doc comments. Mirrors `PublicAPI.Shipped.txt` in the repo.
 - **[Live demo](https://systemslibrarian.github.io/argon2id-passwordhasher/)** —

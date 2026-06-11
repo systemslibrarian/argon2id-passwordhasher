@@ -4,5 +4,13 @@
   items:
     - name: Parameter tuning
       href: parameter-tuning.md
+    - name: Pepper & key management
+      href: pepper-key-management.md
+- name: Migration
+  items:
+    - name: From ASP.NET Core Identity (PBKDF2)
+      href: migrate-from-identity.md
+    - name: From BCrypt
+      href: migrate-from-bcrypt.md
 - name: API reference
   href: api/
