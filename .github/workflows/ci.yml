@@ -21,12 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
 
@@ -49,12 +49,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0 # full history so SourceLink/deterministic builds work
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
           # The library also targets net8.0 + net9.0; install those runtimes so
@@ -75,11 +75,138 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: test-results-${{ matrix.os }}
           path: ${{ github.workspace }}/TestResults/**/*.trx
           retention-days: 14
+
+  coverage:
+    name: Coverage gate
+    needs: format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Test with coverage threshold (core)
+        # coverlet.msbuild fails the build if line coverage drops below the
+        # threshold. Ratchet the numbers up over time â€” never down.
+        run: >
+          dotnet test tests/Argon2id.PasswordHasher.Tests -c Release -f net10.0
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:Include="[Argon2id.PasswordHasher]*"
+          /p:Threshold=80
+          /p:ThresholdType=line
+          /p:ThresholdStat=total
+
+      - name: Test with coverage threshold (AspNetCore adapter)
+        run: >
+          dotnet test tests/Argon2id.PasswordHasher.AspNetCore.Tests -c Release -f net10.0
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:Include="[Argon2id.PasswordHasher.AspNetCore]*"
+          /p:Threshold=80
+          /p:ThresholdType=line
+          /p:ThresholdStat=total
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-reports
+          path: tests/**/coverage.cobertura.xml
+          retention-days: 14
+
+  aot-smoke:
+    name: Native AOT smoke test
+    needs: format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Publish Native AOT smoke test
+        # Proves IsAotCompatible with a real trimmed AOT binary, not just the
+        # absence of analyzer warnings. Trim/AOT warnings are errors here.
+        run: >
+          dotnet publish samples/Argon2id.PasswordHasher.AotSmokeTest/Argon2id.PasswordHasher.AotSmokeTest.csproj
+          -c Release -f net10.0 -r linux-x64 -o aot-publish
+          -p:TreatWarningsAsErrors=true
+
+      - name: Run AOT binary
+        run: ./aot-publish/Argon2id.PasswordHasher.AotSmokeTest
+
+  repro-build:
+    name: Reproducible build check
+    needs: format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Build + pack twice from clean state and compare assemblies
+        # Deterministic + ContinuousIntegrationBuild should make the IL
+        # byte-for-byte identical across builds of the same commit. The nupkg
+        # zip container embeds timestamps, so we compare the assemblies inside.
+        run: |
+          set -euo pipefail
+
+          pack() {
+            dotnet restore
+            dotnet build -c Release --no-restore -p:ContinuousIntegrationBuild=true
+            dotnet pack src/Argon2id.PasswordHasher/Argon2id.PasswordHasher.csproj -c Release --no-build -p:ContinuousIntegrationBuild=true -o "$1"
+            dotnet pack src/Argon2id.PasswordHasher.AspNetCore/Argon2id.PasswordHasher.AspNetCore.csproj -c Release --no-build -p:ContinuousIntegrationBuild=true -o "$1"
+          }
+
+          pack /tmp/pack1
+          git clean -xdf --quiet
+          pack /tmp/pack2
+
+          hash_assemblies() {
+            local dir="$1" out="$2"
+            mkdir -p "$dir/extracted"
+            for pkg in "$dir"/*.nupkg; do
+              unzip -q "$pkg" 'lib/*' -d "$dir/extracted/$(basename "$pkg" .nupkg)"
+            done
+            (cd "$dir/extracted" && find . -name '*.dll' -print0 | sort -z | xargs -0 sha256sum) > "$out"
+          }
+
+          hash_assemblies /tmp/pack1 /tmp/hashes1.txt
+          hash_assemblies /tmp/pack2 /tmp/hashes2.txt
+
+          echo "--- build 1 ---"; cat /tmp/hashes1.txt
+          echo "--- build 2 ---"; cat /tmp/hashes2.txt
+          diff /tmp/hashes1.txt /tmp/hashes2.txt && echo "Reproducible: assemblies are byte-for-byte identical."
 
   pack:
     name: Pack (verification)
@@ -87,12 +214,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           global-json-file: global.json
           dotnet-version: |
@@ -107,14 +234,14 @@ jobs:
         run: dotnet build -c Release --no-restore
 
       - name: Pack both packages
-        # Produces .nupkg + .snupkg per project. This is a verification pack —
+        # Produces .nupkg + .snupkg per project. This is a verification pack â€”
         # the Release workflow handles the actual NuGet push.
         run: |
           dotnet pack src/Argon2id.PasswordHasher/Argon2id.PasswordHasher.csproj -c Release --no-build -o artifacts
           dotnet pack src/Argon2id.PasswordHasher.AspNetCore/Argon2id.PasswordHasher.AspNetCore.csproj -c Release --no-build -o artifacts
 
       - name: Upload packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: nupkgs
           path: artifacts/*.*nupkg

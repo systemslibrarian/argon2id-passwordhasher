@@ -1,0 +1,79 @@
+name: Fuzz (PHC parser)
+
+# Nightly coverage-guided fuzzing of the PHC parser via SharpFuzz + libFuzzer.
+# The committed seed corpus lives in fuzz/corpus and is ALSO replayed as plain
+# unit tests on every CI run (FuzzCorpusReplayTests) â€” this workflow is the
+# exploratory layer on top, hunting for inputs nobody has thought of yet.
+#
+# On a crash, the reproducing input is uploaded as a workflow artifact; add it
+# to fuzz/corpus alongside the fix so it becomes a permanent regression test.
+
+on:
+  schedule:
+    - cron: '41 3 * * *' # nightly, off the hour to spread cron load
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: 'How long to fuzz (minutes)'
+        required: false
+        default: '15'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzz-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fuzz:
+    name: libFuzzer run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+
+      - name: Publish fuzz harness
+        run: dotnet publish fuzz/Argon2id.PasswordHasher.Fuzz/Argon2id.PasswordHasher.Fuzz.csproj -c Release -f net10.0 -o fuzz/publish
+
+      - name: Install SharpFuzz instrumentation tool
+        run: dotnet tool install --global SharpFuzz.CommandLine
+
+      - name: Instrument the library under test
+        # Instrument the CORE assembly (where PhcString lives) so libFuzzer's
+        # coverage feedback tracks the parser, not the harness shim.
+        run: sharpfuzz fuzz/publish/Argon2id.PasswordHasher.dll
+
+      - name: Build libfuzzer-dotnet shim
+        run: |
+          git clone --depth 1 https://github.com/Metalnem/libfuzzer-dotnet.git
+          clang -fsanitize=fuzzer libfuzzer-dotnet/libfuzzer-dotnet.cc -o libfuzzer-dotnet-bin
+
+      - name: Fuzz
+        run: |
+          MINUTES="${{ github.event.inputs.minutes || '15' }}"
+          mkdir -p findings
+          cp fuzz/corpus/* findings/
+          ./libfuzzer-dotnet-bin \
+            --target_path=dotnet \
+            --target_arg=fuzz/publish/Argon2id.PasswordHasher.Fuzz.dll \
+            -max_total_time=$(( MINUTES * 60 )) \
+            -timeout=5 \
+            findings
+
+      - name: Upload findings on crash
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fuzz-findings-${{ github.run_id }}
+          path: |
+            findings/
+            crash-*
+            oom-*
+            timeout-*
+          retention-days: 90

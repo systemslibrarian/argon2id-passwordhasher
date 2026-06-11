@@ -1,0 +1,52 @@
+name: Mutation testing (Stryker.NET)
+
+# Weekly mutation testing of the core library. Stryker mutates the production
+# IL (flips conditionals, removes statements, swaps constants) and re-runs the
+# test suite per mutant; a mutant the tests don't kill is a hole in the suite.
+# The break threshold in tests/Argon2id.PasswordHasher.Tests/stryker-config.json
+# fails this workflow if the mutation score drops below it.
+
+on:
+  schedule:
+    - cron: '17 4 * * 1' # weekly, Monday morning UTC, off the hour
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stryker:
+    name: Mutation score gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Install Stryker.NET
+        run: dotnet tool install --global dotnet-stryker
+
+      - name: Run mutation tests
+        working-directory: tests/Argon2id.PasswordHasher.Tests
+        run: dotnet stryker
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: stryker-report-${{ github.run_id }}
+          path: tests/Argon2id.PasswordHasher.Tests/StrykerOutput/**/reports/*
+          retention-days: 30
