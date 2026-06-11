@@ -1,0 +1,19 @@
+{
+  "stryker-config": {
+    "project": "Argon2id.PasswordHasher.csproj",
+    "target-framework": "net10.0",
+    "reporters": [ "progress", "html", "markdown" ],
+    "thresholds": {
+      "high": 85,
+      "low": 70,
+      "break": 60
+    },
+    "mutation-level": "Standard",
+    "ignore-mutations": [],
+    "ignore-methods": [
+      "*Exception.ctor",
+      "ArgumentNullException.ThrowIfNull",
+      "ArgumentOutOfRangeException.ThrowIf*"
+    ]
+  }
+}
