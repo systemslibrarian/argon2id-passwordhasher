@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.Unicode;
 
 namespace Argon2id.PasswordHasher;
 
@@ -18,6 +19,22 @@ internal sealed record PhcString
 {
     /// <summary>The Argon2 version number. Argon2 v1.3 is encoded as 19 (0x13).</summary>
     public const int Argon2Version = 19;
+
+    // Resource-safety bounds enforced on PARSE. Verification recomputes Argon2id
+    // with the parameters stored in the hash, so without these caps a crafted
+    // stored value (e.g. m=2147483647 KiB) could force a multi-terabyte
+    // allocation — an exception/DoS instead of the documented "return false".
+    // The caps are far above anything a legitimate producer emits today and are
+    // mirrored by Argon2idOptions.Validate() so this library can never emit a
+    // hash its own parser would reject.
+    internal const int MaxMemorySizeKib = 4 * 1024 * 1024; // 4 GiB
+    internal const int MaxIterations = 1024;
+    internal const int MaxDegreeOfParallelism = 128;
+    internal const int MinSaltSizeBytes = 8;               // RFC 9106 minimum
+    internal const int MaxSaltSizeBytes = 64;
+    internal const int MinHashSizeBytes = 16;              // below this, the tag itself is the weakness
+    internal const int MaxHashSizeBytes = 512;
+    internal const int MaxKeyIdBytes = 64;
 
     public required int MemorySizeKib { get; init; }
     public required int Iterations { get; init; }
@@ -94,20 +111,43 @@ internal sealed record PhcString
             return false;
         }
 
+        // Resource-safety caps: verification allocates `m` KiB, so the stored
+        // value must not be able to dictate an absurd allocation. The Argon2
+        // reference implementation additionally requires m >= 8 * p.
+        if (memory > MaxMemorySizeKib
+            || iterations > MaxIterations
+            || parallelism > MaxDegreeOfParallelism
+            || memory < 8L * parallelism)
+        {
+            return false;
+        }
+
         string? keyId = null;
         if (costParts.Length == 4)
         {
+            // keyid carries a pepper *identifier*, which is a string in this
+            // library. Bytes that are not valid UTF-8 cannot round-trip through
+            // a string (replacement characters would change the re-encoded
+            // bytes), so they are rejected rather than silently mangled.
             if (!costParts[3].StartsWith("keyid=", StringComparison.Ordinal)
-                || !TryFromB64NoPadding(costParts[3]["keyid=".Length..], out byte[]? keyIdBytes))
+                || !TryFromB64NoPadding(costParts[3]["keyid=".Length..], out byte[]? keyIdBytes)
+                || keyIdBytes!.Length > MaxKeyIdBytes
+                || !Utf8.IsValid(keyIdBytes))
             {
                 return false;
             }
 
-            keyId = Encoding.UTF8.GetString(keyIdBytes!);
+            keyId = Encoding.UTF8.GetString(keyIdBytes);
         }
 
         if (!TryFromB64NoPadding(parts[4], out byte[]? salt)
             || !TryFromB64NoPadding(parts[5], out byte[]? hash))
+        {
+            return false;
+        }
+
+        if (salt!.Length is < MinSaltSizeBytes or > MaxSaltSizeBytes
+            || hash!.Length is < MinHashSizeBytes or > MaxHashSizeBytes)
         {
             return false;
         }

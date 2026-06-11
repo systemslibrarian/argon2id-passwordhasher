@@ -61,15 +61,26 @@ public sealed record Argon2idOptions
     /// Validates the parameter set, throwing <see cref="ArgumentOutOfRangeException"/>
     /// for any value outside the safe operating range.
     /// </summary>
+    /// <remarks>
+    /// Lower bounds reflect the OWASP / RFC 9106 minimums &#8212; below these the
+    /// configuration would be insecure rather than merely slow. Upper bounds mirror
+    /// the resource-safety caps the PHC parser enforces during verification, so this
+    /// library can never emit a hash its own parser would reject.
+    /// </remarks>
     public void Validate()
     {
-        // Lower bounds reflect the OWASP / RFC 9106 minimums; below these the
-        // configuration would be insecure rather than merely slow.
         if (MemorySizeKib < 8192)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(MemorySizeKib), MemorySizeKib,
                 "Memory cost must be at least 8192 KiB (8 MiB). The library recommends 65536 KiB (64 MiB).");
+        }
+
+        if (MemorySizeKib > PhcString.MaxMemorySizeKib)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(MemorySizeKib), MemorySizeKib,
+                $"Memory cost must not exceed {PhcString.MaxMemorySizeKib} KiB (4 GiB), the verification-side resource cap.");
         }
 
         if (Iterations < 1)
@@ -78,10 +89,24 @@ public sealed record Argon2idOptions
                 nameof(Iterations), Iterations, "Iterations (time cost) must be at least 1.");
         }
 
+        if (Iterations > PhcString.MaxIterations)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(Iterations), Iterations,
+                $"Iterations must not exceed {PhcString.MaxIterations}, the verification-side resource cap.");
+        }
+
         if (DegreeOfParallelism < 1)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(DegreeOfParallelism), DegreeOfParallelism, "Degree of parallelism must be at least 1.");
+        }
+
+        if (DegreeOfParallelism > PhcString.MaxDegreeOfParallelism)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(DegreeOfParallelism), DegreeOfParallelism,
+                $"Degree of parallelism must not exceed {PhcString.MaxDegreeOfParallelism}, the verification-side resource cap.");
         }
 
         if (SaltSizeBytes < 16)
@@ -90,10 +115,24 @@ public sealed record Argon2idOptions
                 nameof(SaltSizeBytes), SaltSizeBytes, "Salt must be at least 16 bytes (128 bits).");
         }
 
+        if (SaltSizeBytes > PhcString.MaxSaltSizeBytes)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(SaltSizeBytes), SaltSizeBytes,
+                $"Salt must not exceed {PhcString.MaxSaltSizeBytes} bytes, the verification-side cap.");
+        }
+
         if (HashSizeBytes < 16)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(HashSizeBytes), HashSizeBytes, "Hash length must be at least 16 bytes (128 bits).");
+        }
+
+        if (HashSizeBytes > PhcString.MaxHashSizeBytes)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(HashSizeBytes), HashSizeBytes,
+                $"Hash length must not exceed {PhcString.MaxHashSizeBytes} bytes, the verification-side cap.");
         }
     }
 }
