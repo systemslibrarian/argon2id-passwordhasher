@@ -501,13 +501,14 @@ issue build-provenance attestations, and create a GitHub Release with all artifa
 
 ## Versioning & status
 
-`0.4.0-preview.5` — **preview**. Follows SemVer with preview suffixes. The API and defaults may
-still change before `1.0.0`; hashes use the standard PHC format and are expected to stay verifiable.
+`1.0.0` — **stable**. The public API surface and the PHC hash format are frozen under SemVer:
+breaking changes only in a major version with a migration guide, and every hash emitted by a
+`1.x` release verifies against every later `1.x` release. The [`SUPPORT.md`](SUPPORT.md)
+supported-versions policy is in effect.
 
-When `1.0.0` ships it will mean exactly this: the public API and PHC format are frozen under
-SemVer, and the [`SUPPORT.md`](SUPPORT.md) supported-versions policy takes effect. It will **not**
-be an audit or assurance claim — see [`KNOWN-GAPS.md`](KNOWN-GAPS.md) §9 for the precise
-commitment, stated before the release rather than after.
+`1.0.0` is a *stability* commitment, **not** an audit or assurance claim — see
+[`KNOWN-GAPS.md`](KNOWN-GAPS.md) §9 for the precise boundary, which was stated before the
+release rather than after.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full version history.
 

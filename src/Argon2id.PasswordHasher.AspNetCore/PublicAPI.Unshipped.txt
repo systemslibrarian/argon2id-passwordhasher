@@ -1,17 +1,1 @@
 #nullable enable
-Argon2id.PasswordHasher.AspNetCore.Argon2idPasswordHasher<TUser>
-Argon2id.PasswordHasher.AspNetCore.Argon2idPasswordHasher<TUser>.Argon2idPasswordHasher(Argon2id.PasswordHasher.Argon2idPasswordHasher! hasher) -> void
-Argon2id.PasswordHasher.AspNetCore.Argon2idPasswordHasher<TUser>.HashPassword(TUser! user, string! password) -> string!
-Argon2id.PasswordHasher.AspNetCore.Argon2idPasswordHasher<TUser>.VerifyHashedPassword(TUser! user, string! hashedPassword, string! providedPassword) -> Microsoft.AspNetCore.Identity.PasswordVerificationResult
-Argon2id.PasswordHasher.AspNetCore.IdentityBuilderExtensions
-Argon2id.PasswordHasher.AspNetCore.MigratingPasswordHasher<TUser>
-Argon2id.PasswordHasher.AspNetCore.MigratingPasswordHasher<TUser>.MigratingPasswordHasher(Argon2id.PasswordHasher.AspNetCore.Argon2idPasswordHasher<TUser!>! argon2id, Microsoft.AspNetCore.Identity.IPasswordHasher<TUser!>! legacy) -> void
-Argon2id.PasswordHasher.AspNetCore.MigratingPasswordHasher<TUser>.HashPassword(TUser! user, string! password) -> string!
-Argon2id.PasswordHasher.AspNetCore.MigratingPasswordHasher<TUser>.VerifyHashedPassword(TUser! user, string! hashedPassword, string! providedPassword) -> Microsoft.AspNetCore.Identity.PasswordVerificationResult
-Argon2id.PasswordHasher.AspNetCore.ServiceCollectionExtensions
-static Argon2id.PasswordHasher.AspNetCore.ServiceCollectionExtensions.AddArgon2idPasswordHasher<TUser>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Argon2id.PasswordHasher.Argon2idOptions? options = null, Argon2id.PasswordHasher.PepperRing? pepper = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Argon2id.PasswordHasher.AspNetCore.ServiceCollectionExtensions.AddArgon2idPasswordHasher<TUser>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Argon2id.PasswordHasher.Argon2idOptions!>! configureOptions) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Argon2id.PasswordHasher.AspNetCore.IdentityBuilderExtensions.AddArgon2idPasswordHasher<TUser>(this Microsoft.AspNetCore.Identity.IdentityBuilder! builder) -> Microsoft.AspNetCore.Identity.IdentityBuilder!
-static Argon2id.PasswordHasher.AspNetCore.IdentityBuilderExtensions.AddArgon2idPasswordHasher<TUser>(this Microsoft.AspNetCore.Identity.IdentityBuilder! builder, System.Action<Argon2id.PasswordHasher.Argon2idOptions!>! configureOptions) -> Microsoft.AspNetCore.Identity.IdentityBuilder!
-static Argon2id.PasswordHasher.AspNetCore.IdentityBuilderExtensions.AddArgon2idPasswordHasherWithMigration<TUser>(this Microsoft.AspNetCore.Identity.IdentityBuilder! builder) -> Microsoft.AspNetCore.Identity.IdentityBuilder!
-static Argon2id.PasswordHasher.AspNetCore.IdentityBuilderExtensions.AddArgon2idPasswordHasherWithMigration<TUser>(this Microsoft.AspNetCore.Identity.IdentityBuilder! builder, System.Action<Argon2id.PasswordHasher.Argon2idOptions!>! configureOptions) -> Microsoft.AspNetCore.Identity.IdentityBuilder!

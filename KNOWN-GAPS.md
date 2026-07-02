@@ -6,7 +6,7 @@ trust by being honest about their edges. If something here surprises you, that i
 the document doing its job.
 
 Nothing below is a secret defect — these are conscious scope decisions as of
-the `0.4.0-preview.5` release.
+the `1.0.0` release.
 
 ## 1. Plaintext `string` password lifetime
 
@@ -126,20 +126,15 @@ Two honest residuals within the caps:
   this doubles thread-pool pressure (latency, not corruption). Rate-limit
   login endpoints — which you should do anyway (§7).
 
-## 9. Preview API stability — and what `1.0.0` will (and won't) mean
-
-This is `0.4.0-preview.5`. The API, defaults, and PHC handling may change before
-`1.0.0`. Hashes produced now use the standard PHC format and are expected to
-remain verifiable, but treat the surface as not-yet-frozen. The
-`PublicApiAnalyzers`-tracked surface (`PublicAPI.Shipped.txt`,
-`PublicAPI.Unshipped.txt`) is the authoritative source for "what counts as
-public" at any given commit.
+## 9. What `1.0.0` means — and what it doesn't
 
 So that nobody projects more onto the version number than it carries,
-here is the commitment `1.0.0` **will** make when it ships:
+here is the commitment `1.0.0` makes, in effect as of this release:
 
 - The public API surface is frozen under SemVer — breaking changes only
-  in a major version, with a migration guide.
+  in a major version, with a migration guide. The
+  `PublicApiAnalyzers`-tracked `PublicAPI.Shipped.txt` beside each csproj
+  is the authoritative contract; any change to it breaks the build.
 - The PHC hash format and parser behavior are stable: every hash ever
   emitted by a `1.x` release verifies against every later `1.x` release.
 - Defaults change only in a minor version, only to *strengthen*, and
@@ -148,7 +143,7 @@ here is the commitment `1.0.0` **will** make when it ships:
 - Security fixes per the supported-versions policy in
   [`SUPPORT.md`](SUPPORT.md).
 
-And what `1.0.0` will **not** mean:
+And what `1.0.0` does **not** mean:
 
 - It is **not** an independent-audit claim (§11 — unchanged by any
   version number).

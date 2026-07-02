@@ -2,22 +2,17 @@
 
 ## Supported versions
 
-This project is in preview. Security fixes are applied to the latest
-`0.x` preview only until a `1.0.0` release is published.
+The policy defined in [`SUPPORT.md`](SUPPORT.md) is in effect: the two
+most recent minor versions receive security fixes (backported to each),
+the current minor receives bug fixes and features, and older minors get
+best-effort security fixes for six months after they are superseded.
+This table is updated at each release to show the concrete supported
+lines.
 
 | Version | Supported |
 | --- | --- |
-| `0.4.x-preview` | ✅ |
-| `0.3.x-preview` | ❌ |
-| `0.2.x-preview` | ❌ |
-| `0.1.x-preview` | ❌ |
-
-Once `1.0.0` ships, the policy defined in [`SUPPORT.md`](SUPPORT.md)
-takes effect: the two most recent minor versions receive security
-fixes (backported to each), the current minor receives bug fixes and
-features, and older minors get best-effort security fixes for six
-months after they are superseded. This table will be updated at each
-release to show the concrete supported lines.
+| `1.0.x` | ✅ |
+| `0.4.x-preview` and earlier previews | ❌ — upgrade to `1.0.0` (stored hashes verify unchanged; see the 1.0.0 CHANGELOG entry for the few behavioral fixes) |
 
 ## Reporting a vulnerability
 

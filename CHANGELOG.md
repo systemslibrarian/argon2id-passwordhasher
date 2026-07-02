@@ -5,7 +5,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 (with `-preview.N` suffixes for previews).
 
-## [Unreleased]
+## [1.0.0] — 2026-07-02
+
+**First stable release.** The public API surface of both packages is now
+frozen under SemVer (`PublicAPI.Shipped.txt` is the contract — 68 core +
+16 adapter API lines), the PHC hash format is stable (every hash emitted
+by any `1.x` verifies against every later `1.x`), and the
+[`SUPPORT.md`](SUPPORT.md) supported-versions policy takes effect. As
+stated before release in `KNOWN-GAPS.md` §9: **1.0 is a stability
+milestone, not an assurance milestone** — it is not an audit claim
+(§11) and not a FIPS claim ([`COMPLIANCE.md`](COMPLIANCE.md)).
+
+This release also contains everything below, produced by a comprehensive
+adversarial review (five independent review passes plus source
+verification of every finding) conducted for the 1.0 freeze.
 
 ### Security
 
@@ -492,7 +505,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decoding, constant-time verification, `NeedsRehash` for transparent
   work-factor upgrades.
 
-[Unreleased]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.5...HEAD
+[Unreleased]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.5...v1.0.0
 [0.4.0-preview.5]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.4...v0.4.0-preview.5
 [0.4.0-preview.4]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.3...v0.4.0-preview.4
 [0.4.0-preview.3]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.2...v0.4.0-preview.3

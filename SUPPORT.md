@@ -29,37 +29,38 @@ contract.
 
 ## Supported versions
 
-While the library is in preview (`0.x`):
-
-- The latest preview is the only supported version.
-- Security fixes are issued only to the latest preview line.
-
-After `1.0.0` ships:
+As of `1.0.0` (the current stable line):
 
 - The two most recent **minor** versions receive bug + security fixes.
 - The current minor version receives feature additions.
 - Earlier minor versions are supported on a best-effort basis for
   security issues for **six months** after the next minor releases.
+- `0.x` previews are unsupported — upgrade to `1.0.0` (stored hashes
+  verify unchanged).
 
 See [`SECURITY.md`](SECURITY.md) for the current supported-versions
 table.
 
 ## What we commit to keep stable across minor versions
 
-Even before `1.0`, the following are **format-stable**:
+The following are **format-stable**:
 
-- The emitted PHC hash string format. A hash produced by `0.3.0`
-  verifies against `0.3.x`, `0.4.x`, and (planned) `1.x` without
-  data migration.
+- The emitted PHC hash string format. A hash produced by any release
+  since `0.3.0` verifies against every `1.x` without data migration.
 - The PHC parser remains a superset over time. We add support for new
   variants, never remove support for old ones, except in a major
   release with a documented migration path.
+- The public API surface (mechanically enforced via
+  `PublicAPI.Shipped.txt`). Additions in minors; removals only in a
+  major with a migration guide.
 
-What may change in any minor before 1.0:
+What may change in a minor:
 
-- Default `Argon2idOptions` parameter values, if industry guidance shifts.
-- The exact list of which Argon2-variant family the parser accepts (we
-  may add support for `keyid` extensions from libsodium etc.).
+- Default `Argon2idOptions` parameter values — only to *strengthen*,
+  if industry guidance shifts (`NeedsRehash` upgrades users
+  transparently).
+- The exact list of which Argon2-variant extensions the parser accepts
+  (we may add support for `keyid` extensions from libsodium etc.).
 - Internal implementation details and dependency versions.
 
 ## What we commit to keep stable across patch versions
@@ -69,17 +70,15 @@ What may change in any minor before 1.0:
 - Wire format and PHC string layout.
 - Dependency major versions.
 
-## Breaking changes during preview
+## Breaking changes
 
-The library is `0.x` — by SemVer convention, anything can change in
-a minor bump. In practice we use that latitude conservatively:
+Since `1.0.0`, breaking changes ship only in a **major** version:
 
-- Each preview-to-preview break is documented in
-  [`CHANGELOG.md`](CHANGELOG.md) under a `### Breaking changes`
-  header.
-- We try to provide a one-step migration for every break.
-- Hash format changes are avoided. The PHC string format is treated
-  as already-stable.
+- Every break is documented in [`CHANGELOG.md`](CHANGELOG.md) under a
+  `### Breaking changes` header with a one-step migration.
+- Hash format changes are avoided entirely; if one ever becomes
+  unavoidable it ships in a major release with a documented
+  migration path, and old hashes keep verifying.
 
 ## Release cadence
 
@@ -90,7 +89,7 @@ There is no fixed cadence. Releases happen when:
 - An enterprise consumer requests a stabilising release.
 
 Expect one to four releases per quarter on average. Tags are pushed
-with the version prefix `v` (e.g. `v0.4.0-preview.4`); the
+with the version prefix `v` (e.g. `v1.0.0`); the
 [Release workflow](.github/workflows/release.yml) handles the matrix
 test, pack, SBOM generation, provenance attestation, and creation of
 the GitHub Release with all artifacts attached. **NuGet publication is
@@ -151,13 +150,10 @@ commitments.
 
 ## Backports
 
-For preview lines, no backports — fixes go to the latest preview only.
-
-Post-`1.0`:
-
 - Security fixes are backported to every supported minor version.
 - Bug fixes are backported to the latest supported minor only.
 - New features land only on the current minor.
+- Retired `0.x` preview lines receive no backports.
 
 ## Issue triage labels
 
@@ -180,10 +176,10 @@ within a few days:
 
 Current open priorities, in rough order:
 
-1. First `1.0.0` release once the API has had a preview cycle of
-   real-world use.
-2. Independent third-party cryptographic audit. See
+1. Independent third-party cryptographic audit. See
    [`KNOWN-GAPS.md`](KNOWN-GAPS.md) §11.
+2. OpenSSF Best Practices badge submission (evidence map:
+   `.github/OPENSSF-BEST-PRACTICES.md`).
 3. Authenticode / NuGet code-signing certificate. See
    [`KNOWN-GAPS.md`](KNOWN-GAPS.md) §10.
 4. Optional HSM-backed peppering path.

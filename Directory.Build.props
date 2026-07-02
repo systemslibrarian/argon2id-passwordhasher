@@ -34,7 +34,7 @@
     <NuGetAuditLevel>low</NuGetAuditLevel>
 
     <!-- Single source of truth for package version. -->
-    <Version>0.4.0-preview.5</Version>
+    <Version>1.0.0</Version>
 
     <!-- Shared author / repository metadata -->
     <Authors>Paul Clark</Authors>
