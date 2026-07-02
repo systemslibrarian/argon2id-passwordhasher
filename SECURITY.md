@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-This project is in early preview. Security fixes are applied to the latest
+This project is in preview. Security fixes are applied to the latest
 `0.x` preview only until a `1.0.0` release is published.
 
 | Version | Supported |
@@ -11,6 +11,13 @@ This project is in early preview. Security fixes are applied to the latest
 | `0.3.x-preview` | ❌ |
 | `0.2.x-preview` | ❌ |
 | `0.1.x-preview` | ❌ |
+
+Once `1.0.0` ships, the policy defined in [`SUPPORT.md`](SUPPORT.md)
+takes effect: the two most recent minor versions receive security
+fixes (backported to each), the current minor receives bug fixes and
+features, and older minors get best-effort security fixes for six
+months after they are superseded. This table will be updated at each
+release to show the concrete supported lines.
 
 ## Reporting a vulnerability
 
@@ -56,6 +63,11 @@ The following are **out of scope** (see [`KNOWN-GAPS.md`](KNOWN-GAPS.md) for det
 
 The library is shipped with several measures designed to make tampering visible:
 
+- **NuGet Trusted Publishing** (OIDC): packages are published by the release
+  workflow using a short-lived, workflow-scoped token — no long-lived NuGet
+  API key exists in repository secrets or on any workstation. Publication is
+  additionally gated behind a manual-approval GitHub environment, so a
+  pushed tag alone cannot make a package public.
 - **Deterministic builds** + **SourceLink** for reproducible binaries that
   resolve back to the exact source commit.
 - **`NuGetAudit`** at build time flags known CVEs in direct and transitive

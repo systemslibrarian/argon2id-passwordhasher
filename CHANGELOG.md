@@ -5,6 +5,148 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 (with `-preview.N` suffixes for previews).
 
+## [Unreleased]
+
+### Security
+
+- **`Pepper` ids are now validated at construction.** Previously any non-empty
+  string was accepted, but the PHC parser caps `keyid` at 64 UTF-8 bytes and
+  UTF-8 encoding silently rewrites unpaired surrogates to U+FFFD — so an id
+  over the byte cap (including "short-looking" multibyte ids: 22 CJK chars =
+  66 bytes) or containing ill-formed UTF-16 produced hashes **the library
+  could never verify**: `HashPassword` succeeded, every subsequent
+  `VerifyPassword` returned false forever. A silent lockout of every user
+  registered under that pepper. The constructor now throws `ArgumentException`
+  for ids that exceed 64 UTF-8 bytes or contain unpaired surrogates,
+  restoring the invariant that the library can never emit a hash its own
+  parser rejects.
+- **`NeedsRehash` now flags two previously-missed upgrade cases:** a stored
+  salt shorter than the configured `SaltSizeBytes` (the parser accepts
+  8-byte salts for interop, below the library's 16-byte floor, but such
+  hashes were never reported as needing an upgrade), and a hash carrying a
+  pepper `keyid` under a hasher with **no** pepper ring (verification
+  correctly fails closed, but `NeedsRehash` said `false` — masking an
+  accidental de-peppering outage from any dashboard or migration job built
+  on it).
+- **Invalid Argon2id options now fail at host startup, not on the first
+  login.** The DI extensions call `ValidateOnStart()`, so a bad
+  `appsettings.json` value (e.g. `MemorySizeKib` below the floor) refuses
+  deployment instead of producing HTTP 500s on the login endpoint at
+  runtime.
+- **The explicit-options DI overload snapshots the options at registration.**
+  Previously the `IOptions` pipeline captured the caller's live instance and
+  copied it lazily at first resolution, so a post-registration mutation could
+  weaken the hasher — defeating the snapshot guarantee the core constructor
+  makes.
+- **A plain `AddArgon2idPasswordHasher` call no longer silently replaces a
+  migrating registration.** Previously, calling it after
+  `AddArgon2idPasswordHasherWithMigration` (two setup modules, a refactor)
+  displaced the migrating hasher and every user still on a legacy PBKDF2
+  hash got `Failed` on correct credentials — order-dependent and invisible.
+  The migrating registration is now detected and preserved.
+- **Options are snapshotted at hasher construction.** `Argon2idOptions`
+  properties are settable (for the Options pattern), which previously left
+  two footguns open: mutating an options instance *after* passing it to a
+  hasher (or mutating the instance returned by `hasher.Options`) silently
+  changed that hasher's parameters — bypassing constructor validation and
+  potentially weakening every future hash — and
+  `Argon2idOptions.Recommended` was a shared mutable singleton, so one
+  mutation poisoned the process-wide defaults (including the no-arg
+  hasher constructor, which uses it). The hasher now validates and stores
+  a private snapshot, `Options` returns a defensive copy, and
+  `Recommended` returns a fresh instance per access. No public API
+  signature changes; behavior now matches what the XML docs already
+  promised.
+
+### Fixed
+
+- **Legacy empty-password accounts no longer throw mid-login during
+  migration.** The stock Identity hasher can hold a hash of `""`; on
+  successful legacy verification the migrating hasher signalled
+  `SuccessRehashNeeded`, making Identity call `HashPassword(user, "")` —
+  which Argon2id (correctly) refuses, turning a successful login into an
+  unhandled exception. Such logins now return plain `Success`; the account
+  upgrades when the password actually changes.
+- **Verify metrics are now accurate.** An empty-password attempt against a
+  perfectly valid stored hash no longer increments
+  `argon2id.parse.failure.count` (the corrupted-data alarm), and
+  `argon2id.verify.count` now counts early-rejected attempts (empty
+  password, unparseable hash) as documented ("regardless of outcome") —
+  previously `parse.failure.count` could exceed `verify.count`.
+
+### Added
+
+- **Identity migration sample**
+  (`samples/Argon2id.PasswordHasher.IdentityMigrationSample`) — a runnable
+  console walkthrough of the primary adoption path: a stock Identity PBKDF2
+  hash transparently upgraded to peppered Argon2id on first login through
+  the real `UserManager<TUser>` pipeline, with the pepper key sourced from
+  an environment variable. The samples previously demonstrated only the
+  core hasher; this is the first to exercise the `.AspNetCore` package.
+- **Producer-direction fuzz phase.** The SharpFuzz harness now also
+  interprets fuzz bytes as *producer* inputs — options clamped to the valid
+  domain and a candidate pepper id gated through the real `Pepper`
+  constructor — and asserts everything `Encode` emits parses back
+  losslessly. The original harness only fuzzed the consumer direction
+  (parse → re-encode), which was structurally blind to the pepper-id
+  encode/parse asymmetry fixed above. A matching CsCheck property
+  (`AnyPepperAcceptedId_RoundTripsThroughEncodeAndParse`) runs the same
+  invariant with arbitrary UTF-16 on every CI run.
+- **Seven new fuzz corpus seeds** covering the boundaries today's review
+  proved interesting: padded-base64 keyid, leading-zero integers, the
+  64-byte keyid cap (at and over), the 8-byte salt minimum (at and below),
+  and an `m < 8p` violation. All replay as unit tests on every CI run.
+- **Fuzz corpus persistence.** The nightly fuzz workflow now restores the
+  grown corpus from previous runs via `actions/cache` and saves it after
+  every run (including crashing ones), so libFuzzer's coverage discoveries
+  compound instead of restarting from the committed seeds each night.
+- **NuGet Trusted Publishing.** The release workflow now publishes to
+  nuget.org via OIDC — a short-lived, workflow-scoped token minted at
+  publish time replaces the long-lived API key entirely. The
+  deliberate-publish policy is preserved by a manual-approval gate (the
+  `nuget` GitHub environment): tagging prepares and attests the release,
+  a maintainer inspects the artifacts and approves the publish. The
+  manual CLI flow remains documented in `PUBLISHING.md` as an emergency
+  fallback only.
+- **`SECURITY-INSIGHTS.yml`** — machine-readable security posture per the
+  OpenSSF Security Insights specification.
+- **Governance & continuity statement** in `SUPPORT.md`: single-maintainer
+  disclosure, why stored hashes are never hostage to this project
+  (standard PHC format), reproducible-build fork-ability, and a concrete
+  fork/vendor contingency for the Konscious dependency. Registered as
+  `KNOWN-GAPS.md` §14.
+- **OpenSSF Best Practices badge evidence map**
+  (`.github/OPENSSF-BEST-PRACTICES.md`) so the maintainer can complete
+  the bestpractices.dev self-attestation quickly.
+- Draft materials for soliciting external review at zero cost
+  (`.github/DRAFT-request-for-cryptographic-review.md`,
+  `.github/DRAFT-ostif-application.md`).
+
+### Changed
+
+- **README** gains a "What we claim — and what we don't" section stating
+  the claim boundary (verified-correctness machinery vs. no independent
+  audit / no FIPS validation / no support contract) in one place, and the
+  versioning section now states what `1.0.0` will and will not mean.
+- **`KNOWN-GAPS.md` §9** now spells out the exact `1.0.0` commitment
+  (API/format freeze under SemVer) and its explicit non-claims — a
+  stability milestone, not an assurance milestone.
+- **`SECURITY.md`** supported-versions section now states the concrete
+  post-1.0 support policy (aligned with `SUPPORT.md`).
+- **`KNOWN-GAPS.md` §8** now documents two within-cap residuals honestly: a
+  stored row at the parser caps can still OOM a small host (surfacing as
+  `AggregateException` wrapping `OutOfMemoryException` due to the underlying
+  implementation's `Task.Run(...).Result`), and the same design blocks one
+  thread-pool thread per hash under load. **New §13** documents that the
+  parser accepts non-canonical encodings (padded base64, slack trailing
+  bits, leading-zero integers) of the same logical hash — verification is
+  unaffected, exact-string dedupe/audits should know.
+- Removed stray AI-brainstorm notes (`chatgpt.md`,
+  `geminisuggestions.md`) from the repo root; everything actionable in
+  them was already implemented or documented.
+- Fixed mojibake em-dashes (`â€"` → `—`) in comments across six workflow
+  files.
+
 ## [0.4.0-preview.5] — 2026-06-11
 
 ### Security
@@ -350,7 +492,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   decoding, constant-time verification, `NeedsRehash` for transparent
   work-factor upgrades.
 
-[Unreleased]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.4...HEAD
+[Unreleased]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.5...HEAD
+[0.4.0-preview.5]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.4...v0.4.0-preview.5
 [0.4.0-preview.4]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.3...v0.4.0-preview.4
 [0.4.0-preview.3]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.2...v0.4.0-preview.3
 [0.4.0-preview.2]: https://github.com/systemslibrarian/argon2id-passwordhasher/compare/v0.4.0-preview.1...v0.4.0-preview.2

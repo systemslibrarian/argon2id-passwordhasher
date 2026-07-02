@@ -109,7 +109,24 @@ with parameters above those caps will not verify here. The caps sit far above
 any sane production configuration, and `Argon2idOptions.Validate()` enforces
 the same bounds, so the library can never emit a hash its own parser rejects.
 
-## 9. Preview API stability
+Two honest residuals within the caps:
+
+- A crafted stored row at the caps (`m` = 4 GiB, `t` = 1024, `p` = 128) still
+  drives a ~4 GiB allocation and minutes of compute per verification. On a
+  memory-constrained host that allocation can fail, and because the
+  underlying Konscious implementation runs the computation via
+  `Task.Run(...).Result`, the failure surfaces as an `AggregateException`
+  wrapping `OutOfMemoryException` — a narrow exception to the "verify never
+  throws on bad stored data" rule that only occurs when the host cannot
+  physically satisfy a within-cap allocation. If your hash column is
+  attacker-writable and your hosts are small, add an application-side cap
+  check before verifying.
+- The same `Task.Run(...).Result` design means each hash/verify blocks one
+  thread-pool thread while its work runs on another. Under a login burst
+  this doubles thread-pool pressure (latency, not corruption). Rate-limit
+  login endpoints — which you should do anyway (§7).
+
+## 9. Preview API stability — and what `1.0.0` will (and won't) mean
 
 This is `0.4.0-preview.5`. The API, defaults, and PHC handling may change before
 `1.0.0`. Hashes produced now use the standard PHC format and are expected to
@@ -117,6 +134,31 @@ remain verifiable, but treat the surface as not-yet-frozen. The
 `PublicApiAnalyzers`-tracked surface (`PublicAPI.Shipped.txt`,
 `PublicAPI.Unshipped.txt`) is the authoritative source for "what counts as
 public" at any given commit.
+
+So that nobody projects more onto the version number than it carries,
+here is the commitment `1.0.0` **will** make when it ships:
+
+- The public API surface is frozen under SemVer — breaking changes only
+  in a major version, with a migration guide.
+- The PHC hash format and parser behavior are stable: every hash ever
+  emitted by a `1.x` release verifies against every later `1.x` release.
+- Defaults change only in a minor version, only to *strengthen*, and
+  are always logged in `CHANGELOG.md`; `NeedsRehash` upgrades users
+  transparently.
+- Security fixes per the supported-versions policy in
+  [`SUPPORT.md`](SUPPORT.md).
+
+And what `1.0.0` will **not** mean:
+
+- It is **not** an independent-audit claim (§11 — unchanged by any
+  version number).
+- It is **not** a FIPS or formal-validation claim (see
+  [`COMPLIANCE.md`](COMPLIANCE.md)).
+- It does **not** upgrade the support model beyond what
+  [`SUPPORT.md`](SUPPORT.md) states — this remains a community-supported
+  open-source project.
+
+`1.0.0` is a *stability* milestone, not an *assurance* milestone.
 
 ## 10. No NuGet code-signing certificate (yet)
 
@@ -185,6 +227,31 @@ then loses the `FixedTimeEquals` comparison. The keyid is part of the public
 PHC string the attacker can already read, so this fast-fail does not disclose
 any value they don't already have — but it would be wrong to call the verify
 path globally constant-time, and we don't.
+
+## 13. Parser accepts non-canonical encodings of the same hash
+
+`TryParse` is deliberately permissive-fail-safe, and that permissiveness
+means several *distinct strings* decode to the *same logical hash*: base64
+segments with restored `=` padding, base64 whose final character carries
+non-canonical trailing bits, and integer parameters with leading zeros
+(`m=0065536`) are all accepted, though `Encode` only ever emits the
+canonical form. Verification is completely unaffected — the decoded bytes
+are identical — but if you deduplicate, audit, or search stored hashes by
+**exact string** comparison (including the `keyid=` `LIKE` query in §2),
+be aware that non-canonical variants of the same hash would evade it. We
+keep the parser permissive because rejecting padded base64 could break
+verification of hashes imported from producers that pad; canonicality was
+never a PHC security guarantee.
+
+## 14. Single maintainer (bus factor of one)
+
+One person holds commit and publish rights. This is the honest
+structural risk of most open-source libraries and this one is no
+exception. The mitigations — standard hash format (your data is never
+hostage to this project), fully reproducible builds, MIT license, an
+independently-validating test suite that travels with any fork, and a
+no-silent-abandonment commitment — are laid out in
+[`SUPPORT.md`](SUPPORT.md) § "Governance, bus factor, and continuity".
 
 ---
 

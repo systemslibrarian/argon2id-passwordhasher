@@ -98,6 +98,41 @@ a separate, deliberately-manual CLI step** performed from a
 maintainer's workstation after artifact review — see
 [`PUBLISHING.md`](PUBLISHING.md) for the procedure.
 
+## Governance, bus factor, and continuity
+
+Honesty about project structure, in the same spirit as
+[`KNOWN-GAPS.md`](KNOWN-GAPS.md):
+
+**This is a single-maintainer project.** There is one person with commit
+and NuGet-publish rights. OpenSSF Scorecard sees this and so should you.
+What keeps that from being a trap for adopters:
+
+- **Your data is never hostage.** Hashes are standard PHC-format Argon2id
+  (RFC 9106). Any compliant Argon2id implementation — libsodium,
+  the reference C library, another .NET wrapper — can verify them.
+  If this project vanished tomorrow, no stored hash would need migration.
+- **The build is fully reproducible from the repo.** Deterministic
+  builds, a pinned SDK (`global.json`), SHA-pinned CI actions, and a
+  documented release procedure ([`PUBLISHING.md`](PUBLISHING.md)) mean a
+  fork can produce byte-identical assemblies and take over maintenance
+  without any private knowledge or infrastructure.
+- **MIT license.** Forking is not just legally possible but structurally
+  easy — the test suite (KAT corpus, differential tests, fuzz corpus)
+  travels with the code and validates any fork independently.
+- **No silent abandonment.** If maintenance stops, the README will say
+  so and the repository will be archived, not left looking alive.
+
+**Contingency for the Konscious dependency.** The Argon2id computation
+is delegated to `Konscious.Security.Cryptography.Argon2` (pinned to an
+exact version). If upstream becomes unmaintained while a security issue
+is open, the plan is to fork or vendor the implementation at the pinned
+version and fix it there. That plan is credible rather than aspirational
+because the repo already contains the machinery to validate such a fork
+independently of upstream: a reference-C-verified known-answer-vector
+corpus, differential tests against a second independent implementation
+(Isopoh), property-based round-trip tests, and a fuzz corpus. A fork
+that passes all of those is demonstrably a faithful Argon2id.
+
 ## How to ask for help
 
 Pick the channel matching your need:

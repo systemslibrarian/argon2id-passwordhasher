@@ -1,0 +1,119 @@
+# OpenSSF Security Insights — machine-readable security posture.
+# Spec: https://github.com/ossf/security-insights-spec (v1.0.0 schema)
+# Human-readable equivalents: SECURITY.md, THREAT-MODEL.md, COMPLIANCE.md, KNOWN-GAPS.md
+
+header:
+  schema-version: 1.0.0
+  expiration-date: '2027-07-01T00:00:00.000Z'
+  last-updated: '2026-07-02'
+  last-reviewed: '2026-07-02'
+  project-url: https://github.com/systemslibrarian/argon2id-passwordhasher
+  changelog: https://github.com/systemslibrarian/argon2id-passwordhasher/blob/main/CHANGELOG.md
+  license: https://github.com/systemslibrarian/argon2id-passwordhasher/blob/main/LICENSE
+
+project-lifecycle:
+  status: active
+  bug-fixes-only: false
+  core-maintainers:
+    - https://github.com/systemslibrarian
+  roadmap: https://github.com/systemslibrarian/argon2id-passwordhasher/blob/main/SUPPORT.md#roadmap
+
+contribution-policy:
+  accepts-pull-requests: true
+  accepts-automated-pull-requests: true
+  contributing-policy: https://github.com/systemslibrarian/argon2id-passwordhasher/blob/main/CONTRIBUTING.md
+  code-of-conduct: https://github.com/systemslibrarian/argon2id-passwordhasher/blob/main/CODE_OF_CONDUCT.md
+
+documentation:
+  - https://systemslibrarian.github.io/argon2id-passwordhasher/docs/
+  - https://github.com/systemslibrarian/argon2id-passwordhasher/blob/main/README.md
+
+distribution-points:
+  - https://www.nuget.org/packages/Argon2id.PasswordHasher
+  - https://www.nuget.org/packages/Argon2id.PasswordHasher.AspNetCore
+  - https://github.com/systemslibrarian/argon2id-passwordhasher/releases
+
+security-artifacts:
+  threat-model:
+    threat-model-created: true
+    evidence-url:
+      - https://github.com/systemslibrarian/argon2id-passwordhasher/blob/main/THREAT-MODEL.md
+  self-assessment:
+    self-assessment-created: true
+    evidence-url:
+      - https://github.com/systemslibrarian/argon2id-passwordhasher/blob/main/COMPLIANCE.md
+      - https://github.com/systemslibrarian/argon2id-passwordhasher/blob/main/KNOWN-GAPS.md
+
+security-testing:
+  - tool-type: sca
+    tool-name: NuGetAudit
+    tool-version: latest
+    tool-url: https://learn.microsoft.com/nuget/concepts/auditing-packages
+    integration:
+      ad-hoc: false
+      ci: true
+      before-release: true
+    comment: >
+      Runs on every build over direct + transitive dependencies at 'low'
+      severity; a failing audit is a build warning promoted to error.
+  - tool-type: sast
+    tool-name: CodeQL
+    tool-version: latest
+    tool-url: https://codeql.github.com/
+    integration:
+      ad-hoc: false
+      ci: true
+      before-release: true
+    comment: security-and-quality query pack, weekly + per-PR.
+  - tool-type: fuzzer
+    tool-name: SharpFuzz (libFuzzer)
+    tool-version: latest
+    tool-url: https://github.com/Metalnem/sharpfuzz
+    integration:
+      ad-hoc: false
+      ci: true
+      before-release: true
+    comment: >
+      Coverage-guided fuzzing of the PHC parser, nightly; the committed
+      seed corpus is replayed as unit tests on every CI run.
+  - tool-type: sast
+    tool-name: OpenSSF Scorecard
+    tool-version: latest
+    tool-url: https://securityscorecards.dev/
+    integration:
+      ad-hoc: false
+      ci: true
+      before-release: false
+    comment: Weekly + per-push supply-chain hygiene grading, SARIF to GitHub Security.
+
+security-contacts:
+  - type: website
+    value: https://github.com/systemslibrarian/argon2id-passwordhasher/security/advisories/new
+    primary: true
+
+vulnerability-reporting:
+  accepts-vulnerability-reports: true
+  security-policy: https://github.com/systemslibrarian/argon2id-passwordhasher/blob/main/SECURITY.md
+  comment: >
+    Report privately via GitHub Security Advisories. Acknowledgement
+    target is 72 hours; do not open public issues for vulnerabilities.
+
+dependencies:
+  third-party-packages: true
+  dependencies-lists:
+    - https://github.com/systemslibrarian/argon2id-passwordhasher/blob/main/src/Argon2id.PasswordHasher/Argon2id.PasswordHasher.csproj
+    - https://github.com/systemslibrarian/argon2id-passwordhasher/blob/main/src/Argon2id.PasswordHasher.AspNetCore/Argon2id.PasswordHasher.AspNetCore.csproj
+  sbom:
+    - sbom-file: https://github.com/systemslibrarian/argon2id-passwordhasher/releases
+      sbom-format: CycloneDX
+      sbom-url: https://github.com/systemslibrarian/argon2id-passwordhasher/releases
+  dependencies-lifecycle:
+    policy-url: https://github.com/systemslibrarian/argon2id-passwordhasher/blob/main/SECURITY.md#implementation-choice--dependency-posture
+    comment: >
+      The load-bearing Argon2 dependency (Konscious) is pinned to an exact
+      version; bumps are gated on maintainer review of the upstream diff
+      plus a reference-C-verified known-answer-vector corpus, differential
+      tests against an independent implementation, and NuGetAudit staying
+      green. Contingency (fork/vendor) is documented in SUPPORT.md.
+  env-dependencies-policy:
+    policy-url: https://github.com/systemslibrarian/argon2id-passwordhasher/blob/main/SUPPORT.md

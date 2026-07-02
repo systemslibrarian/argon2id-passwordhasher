@@ -42,21 +42,24 @@ bool ok = hasher.VerifyPassword("correct horse battery staple", stored); // true
 
 ## Try the demo
 
-There are two runnable samples, sharing the same UX so you can pick whichever
-fits what you want to show:
+There are three runnable samples, each aimed at a different question:
 
 | Sample | Where it runs | When to use it |
 | --- | --- | --- |
 | [**Live WASM demo**](https://systemslibrarian.github.io/argon2id-passwordhasher/) | In your browser, no install | Quickest way to try the library. Hashing runs on your CPU via WebAssembly. Auto-deployed to GitHub Pages on every push. |
 | [**API documentation**](https://systemslibrarian.github.io/argon2id-passwordhasher/docs/) | DocFx, browser | Every public type + member, generated from XML doc comments. Co-published with the live demo. |
+| [`samples/Argon2id.PasswordHasher.IdentityMigrationSample`](samples/Argon2id.PasswordHasher.IdentityMigrationSample) | Console (local) | **The adoption path.** Watch a real `UserManager` verify a stock PBKDF2 hash and transparently rewrite it as peppered Argon2id on first login — zero resets, zero downtime. Copy its wiring into your app. |
 | [`samples/Argon2id.PasswordHasher.Demo`](samples/Argon2id.PasswordHasher.Demo) | Blazor Server (local) | Shows production-shape integration: DI, antiforgery, rate limiting, HSTS, CSP, constant-time login, memory-cost DoS gate. |
 | [`samples/Argon2id.PasswordHasher.WasmDemo`](samples/Argon2id.PasswordHasher.WasmDemo) | Blazor WebAssembly (local) | Same UX as the live demo, but running against the in-tree library. Edit and refresh. |
 
-Run either locally:
+Run any locally:
 
 ```bash
 git clone https://github.com/systemslibrarian/argon2id-passwordhasher.git
 cd argon2id-passwordhasher
+
+# The migration walkthrough (PBKDF2 → peppered Argon2id via real Identity):
+dotnet run --project samples/Argon2id.PasswordHasher.IdentityMigrationSample
 
 # Server flavor (production-shape, hardened):
 dotnet run --project samples/Argon2id.PasswordHasher.Demo
@@ -65,7 +68,7 @@ dotnet run --project samples/Argon2id.PasswordHasher.Demo
 dotnet run --project samples/Argon2id.PasswordHasher.WasmDemo
 ```
 
-Both samples use a `ProjectReference` to the in-tree library, so they always
+All samples use a `ProjectReference` to the in-tree library, so they always
 exercise the version you're working on. **They are demos, not starter
 templates** — users live in memory and hash internals are shown on screen for
 educational clarity (see each sample's own README).
@@ -386,6 +389,26 @@ checks, or MFA — those belong at your application/identity layer. For a frank 
 it does *not* do (plaintext `string` lifetime, memory-cost DoS, and more), read
 [`KNOWN-GAPS.md`](KNOWN-GAPS.md). Transparency is a feature.
 
+### What we claim — and what we don't
+
+So you can calibrate trust precisely, here is the claim boundary in one place:
+
+**We claim:** correct Argon2id per RFC 9106 — continuously verified by a
+known-answer-vector corpus cross-checked against the reference C implementation,
+differential testing against an independent second implementation, coverage-guided
+fuzzing of the parser, property-based tests, and mutation testing of the test suite
+itself. Reproducible builds, provenance attestations, and SBOMs let you verify
+that what's on NuGet is what's in this repo.
+
+**We do not claim:** an independent third-party cryptographic audit
+([`KNOWN-GAPS.md`](KNOWN-GAPS.md) §11 — none has been funded yet; the code is
+structured and documented to make one cheap when it becomes possible), FIPS
+validation ([`COMPLIANCE.md`](COMPLIANCE.md)), or a vendor support contract
+([`SUPPORT.md`](SUPPORT.md)). Until an audit happens, treat this as a
+high-quality open-source dependency — verify our work via the
+[threat model](THREAT-MODEL.md), the test suite, and the reproducible builds,
+not our say-so.
+
 ## API reference
 
 **`Argon2idPasswordHasher`**
@@ -480,6 +503,11 @@ issue build-provenance attestations, and create a GitHub Release with all artifa
 
 `0.4.0-preview.5` — **preview**. Follows SemVer with preview suffixes. The API and defaults may
 still change before `1.0.0`; hashes use the standard PHC format and are expected to stay verifiable.
+
+When `1.0.0` ships it will mean exactly this: the public API and PHC format are frozen under
+SemVer, and the [`SUPPORT.md`](SUPPORT.md) supported-versions policy takes effect. It will **not**
+be an audit or assurance claim — see [`KNOWN-GAPS.md`](KNOWN-GAPS.md) §9 for the precise
+commitment, stated before the release rather than after.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full version history.
 
