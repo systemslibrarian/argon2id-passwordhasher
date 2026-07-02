@@ -51,7 +51,7 @@ jobs:
         # --nologo keeps the log clean; the Blazor SDK does its own static-asset
         # fingerprinting, so we just need the final wwwroot/ tree.
         # -f is required because the csproj uses <TargetFrameworks> (plural)
-        # even though only net10.0 is listed â€” MSBuild treats it as cross-targeting.
+        # even though only net10.0 is listed — MSBuild treats it as cross-targeting.
         run: |
           dotnet publish samples/Argon2id.PasswordHasher.WasmDemo/Argon2id.PasswordHasher.WasmDemo.csproj \
             -c Release \

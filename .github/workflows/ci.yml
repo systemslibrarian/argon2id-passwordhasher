@@ -101,7 +101,7 @@ jobs:
 
       - name: Test with coverage threshold (core)
         # coverlet.msbuild fails the build if line coverage drops below the
-        # threshold. Ratchet the numbers up over time â€” never down.
+        # threshold. Ratchet the numbers up over time — never down.
         run: >
           dotnet test tests/Argon2id.PasswordHasher.Tests -c Release -f net10.0
           /p:CollectCoverage=true
@@ -234,7 +234,7 @@ jobs:
         run: dotnet build -c Release --no-restore
 
       - name: Pack both packages
-        # Produces .nupkg + .snupkg per project. This is a verification pack â€”
+        # Produces .nupkg + .snupkg per project. This is a verification pack —
         # the Release workflow handles the actual NuGet push.
         run: |
           dotnet pack src/Argon2id.PasswordHasher/Argon2id.PasswordHasher.csproj -c Release --no-build -o artifacts

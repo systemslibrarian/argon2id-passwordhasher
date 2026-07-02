@@ -1,11 +1,11 @@
 name: Differential testing (nightly)
 
-# Re-runs the differential test suite (Konscious vs Isopoh â€” two independent
+# Re-runs the differential test suite (Konscious vs Isopoh — two independent
 # Argon2 implementations compared byte-for-byte) with a fresh random seed every
 # night. The same tests run deterministically (fixed seed) in regular CI; this
 # workflow walks a new slice of the parameter space each run.
 #
-# A failure here means the two implementations disagree â€” treat it as a
+# A failure here means the two implementations disagree — treat it as a
 # potential engine bug. The failing test output contains the full parameter
 # set + seed needed to reproduce; pin it as a regression case alongside the fix.
 

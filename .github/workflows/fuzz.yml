@@ -2,7 +2,7 @@ name: Fuzz (PHC parser)
 
 # Nightly coverage-guided fuzzing of the PHC parser via SharpFuzz + libFuzzer.
 # The committed seed corpus lives in fuzz/corpus and is ALSO replayed as plain
-# unit tests on every CI run (FuzzCorpusReplayTests) â€” this workflow is the
+# unit tests on every CI run (FuzzCorpusReplayTests) — this workflow is the
 # exploratory layer on top, hunting for inputs nobody has thought of yet.
 #
 # On a crash, the reproducing input is uploaded as a workflow artifact; add it
@@ -54,6 +54,17 @@ jobs:
           git clone --depth 1 https://github.com/Metalnem/libfuzzer-dotnet.git
           clang -fsanitize=fuzzer libfuzzer-dotnet/libfuzzer-dotnet.cc -o libfuzzer-dotnet-bin
 
+      - name: Restore grown corpus from previous runs
+        # Each nightly run builds on every previous run's coverage discoveries
+        # instead of restarting from the committed seeds — libFuzzer value
+        # compounds with corpus persistence.
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: findings
+          key: fuzz-corpus-${{ github.run_id }}
+          restore-keys: |
+            fuzz-corpus-
+
       - name: Fuzz
         run: |
           MINUTES="${{ github.event.inputs.minutes || '15' }}"
@@ -65,6 +76,15 @@ jobs:
             -max_total_time=$(( MINUTES * 60 )) \
             -timeout=5 \
             findings
+
+      - name: Persist grown corpus
+        # Save even when the run found a crash — the crashing input is exactly
+        # what the next run (and the uploaded artifact) should start from.
+        if: always()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: findings
+          key: fuzz-corpus-${{ github.run_id }}
 
       - name: Upload findings on crash
         if: failure()

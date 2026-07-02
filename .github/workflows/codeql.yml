@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ main ]
   schedule:
-    # Weekly scan on Sundays â€” catches new advisories even when nothing's merged.
+    # Weekly scan on Sundays — catches new advisories even when nothing's merged.
     - cron: '17 6 * * 0'
 
 permissions:
@@ -50,7 +50,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           # `security-and-quality` includes the standard security suite plus the
-          # broader quality queries â€” appropriate for a security-sensitive library.
+          # broader quality queries — appropriate for a security-sensitive library.
           queries: security-and-quality
 
       - name: Build

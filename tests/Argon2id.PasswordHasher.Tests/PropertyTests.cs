@@ -112,6 +112,41 @@ public class PropertyTests
     }
 
     [Fact]
+    public void AnyPepperAcceptedId_RoundTripsThroughEncodeAndParse()
+    {
+        // Arbitrary UTF-16 — including lone surrogates, multibyte characters,
+        // and ids near the 64-UTF-8-byte cap. The Pepper constructor is the
+        // gate: whatever it ACCEPTS must round-trip through Encode→TryParse,
+        // and whatever cannot round-trip it must REJECT. This is the property
+        // that guards against the keyid encode/parse asymmetry, where a
+        // legal-looking pepper id produced permanently unverifiable hashes.
+        var gen = Gen.Char.Array[1, 80].Select(chars => new string(chars));
+
+        var options = new Argon2idOptions { MemorySizeKib = 8192, Iterations = 1, DegreeOfParallelism = 1 };
+        byte[] salt = new byte[16];
+        byte[] tag = new byte[32];
+
+        gen.Sample(id =>
+        {
+            Pepper pepper;
+            try
+            {
+                pepper = new Pepper(id, new byte[16]);
+            }
+            catch (ArgumentException)
+            {
+                // Correctly rejected at the gate — nothing to round-trip.
+                return;
+            }
+
+            string encoded = PhcString.Encode(options, salt, tag, pepper.Id);
+
+            Assert.True(PhcString.TryParse(encoded, out PhcString? parsed));
+            Assert.Equal(id, parsed!.KeyId);
+        }, iter: 10_000);
+    }
+
+    [Fact]
     public void HashThenVerify_RoundTrips_ForArbitraryUnicodePasswords()
     {
         // Hashing is the expensive part, so this property runs few iterations;

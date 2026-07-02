@@ -41,7 +41,7 @@ jobs:
           results_file: results.sarif
           results_format: sarif
           # publish_results pushes the score to the public Scorecard API so
-          # the README badge can show it. Safe â€” only the score + URL.
+          # the README badge can show it. Safe — only the score + URL.
           publish_results: true
 
       - name: Upload artifact
