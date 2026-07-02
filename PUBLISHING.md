@@ -1,157 +1,109 @@
 # Publishing to NuGet
 
-NuGet publication is a deliberately **manual CLI step**, not part of the
-GitHub Actions release workflow. This document tells a maintainer exactly
-how to do it.
+Publication uses **NuGet Trusted Publishing** (OIDC): the release workflow
+exchanges a GitHub-issued identity token for a **short-lived NuGet API key**
+at publish time. There is no long-lived API key anywhere — not in repository
+secrets, not on a workstation.
 
-The Actions release workflow only runs on tag push and produces:
+The deliberate-publish property of the old manual flow is preserved by an
+**approval gate**: the `publish-nuget` job runs in the `nuget` GitHub
+environment, which requires maintainer review. Tagging *prepares* a release;
+a human *makes it public*.
 
-- The two `.nupkg` packages + their `.snupkg` symbol packages
-- CycloneDX SBOMs per package
-- SLSA-style build-provenance attestations
-- A GitHub Release with all of the above attached
+## The flow
 
-What it deliberately does **not** do:
+1. **Tag the release** (from the correct commit on `main`):
 
-- Push to `nuget.org`. That's this document.
+   ```bash
+   git tag v1.0.0-rc.1 && git push origin v1.0.0-rc.1
+   ```
 
-## Why manual
+2. **The workflow prepares everything**: full test matrix (3 OSes × 3 TFMs),
+   pack, CycloneDX SBOMs, build-provenance attestations, and a GitHub
+   Release with all artifacts attached. Then the `publish-nuget` job **stops
+   and waits** for environment approval.
 
-Pushing to a public registry is irreversible (NuGet supports
-*unlisting* but not deletion). Forcing the maintainer to look at the
-packed artifacts and run the push by hand catches:
+3. **Inspect before approving.** Download the artifacts from the GitHub
+   Release (or the workflow run) and check whatever you'd have checked in
+   the manual flow — version number matches the CHANGELOG, icon + metadata
+   present, attestation verifies:
+
+   ```bash
+   gh attestation verify Argon2id.PasswordHasher.<version>.nupkg \
+     --repo systemslibrarian/argon2id-passwordhasher
+   ```
+
+4. **Approve the deployment** — on the workflow run page, "Review
+   deployments" → approve `nuget`. The job exchanges its OIDC token for a
+   temporary key and pushes both `.nupkg`s (symbols auto-discovered,
+   `--skip-duplicate` makes re-approval idempotent). It pushes the *exact
+   attested bytes* from the prepare job — no rebuild.
+
+5. **Confirm** (5–15 min for indexing):
+   - https://www.nuget.org/packages/Argon2id.PasswordHasher
+   - https://www.nuget.org/packages/Argon2id.PasswordHasher.AspNetCore
+
+6. **Tidy the GitHub Release**: remove the "publication awaits approval"
+   status banner from the notes:
+
+   ```bash
+   gh release edit <tag> \
+     --repo systemslibrarian/argon2id-passwordhasher \
+     --notes "$(gh release view <tag> --json body -q .body \
+       | sed '/^## Status/,/^## Auto-generated notes$/d')"
+   ```
+
+## One-time setup (already done — recorded for disaster recovery)
+
+Recreating this from scratch requires both halves to match exactly:
+
+- **nuget.org** → profile → *Trusted Publishing* → policy with:
+  - Package owner: `systemslibrarian`
+  - Repository owner: `systemslibrarian`
+  - Repository: `argon2id-passwordhasher`
+  - Workflow file: `release.yml`
+  - Environment: `nuget`
+- **GitHub** → repo → Settings → Environments → `nuget` with **Required
+  reviewers** = the maintainer. (Created via
+  `gh api -X PUT repos/systemslibrarian/argon2id-passwordhasher/environments/nuget`.)
+- The workflow's `NuGet/login` step's `user:` must equal the nuget.org
+  username that owns the policy.
+
+If the policy and workflow drift (renamed workflow file, different
+environment name), the OIDC exchange fails closed with a clear error —
+nothing publishes.
+
+## Why the approval gate
+
+Pushing to a public registry is irreversible (NuGet supports *unlisting*
+but not deletion). The gate catches:
 
 - Accidental tags pushed from a stale or wrong branch
-- Versions where the test matrix passed but the resulting package
-  is somehow off (icon, metadata, missing assets)
-- Pre-1.0 preview-bump mistakes (e.g. tagging `v0.4.0-preview.4`
-  when the CHANGELOG/version property still says `v0.4.0-preview.3`)
+- Versions where the test matrix passed but the resulting package is
+  somehow off (icon, metadata, missing assets)
+- Version-bump mistakes (e.g. tagging `v1.0.1` while
+  `Directory.Build.props` still says `1.0.0`)
 
-Once the project is post-1.0 and release cadence stabilizes, this
-policy can be revisited.
+## Fallback: manual CLI push
 
-## Prerequisites
-
-1. **Local clone** of the repo, on the tagged commit:
-   ```bash
-   git fetch --tags
-   git checkout v0.4.0-preview.4
-   ```
-2. **NuGet API key** stored locally at the repo root in `.nuget-api-key`
-   (already covered by `.gitignore`). The key on nuget.org should be
-   scoped to:
-   - **Scopes:** Push + Push new packages and package versions (nothing else).
-   - **Packages glob:** `Argon2id.PasswordHasher*`
-   - **Expiration:** 365 days; calendar a rotation reminder.
-3. **`dotnet`** SDK 10.0+ on PATH (the pinned `global.json` version is fine).
-
-## The push
-
-Either pack fresh locally, or download the artifacts from the
-GitHub Release for the tag.
-
-### Option A — pack fresh from the tagged commit (recommended)
+If GitHub Actions is unavailable, a maintainer can still publish from a
+workstation. This requires creating a **temporary** API key on nuget.org
+(scopes: Push only; glob `Argon2id.PasswordHasher*`; shortest expiry
+offered) and revoking it immediately after:
 
 ```bash
 # From the repo root, on the tagged commit:
 rm -rf artifacts
-dotnet pack src/Argon2id.PasswordHasher/Argon2id.PasswordHasher.csproj \
-  -c Release -o artifacts
-dotnet pack src/Argon2id.PasswordHasher.AspNetCore/Argon2id.PasswordHasher.AspNetCore.csproj \
-  -c Release -o artifacts
+dotnet pack src/Argon2id.PasswordHasher/Argon2id.PasswordHasher.csproj -c Release -o artifacts
+dotnet pack src/Argon2id.PasswordHasher.AspNetCore/Argon2id.PasswordHasher.AspNetCore.csproj -c Release -o artifacts
 
-ls artifacts/  # should show 2 .nupkg + 2 .snupkg at the tagged version
+dotnet nuget push artifacts/Argon2id.PasswordHasher.<version>.nupkg \
+  --api-key "<temporary-key>" --source https://api.nuget.org/v3/index.json --skip-duplicate
+dotnet nuget push artifacts/Argon2id.PasswordHasher.AspNetCore.<version>.nupkg \
+  --api-key "<temporary-key>" --source https://api.nuget.org/v3/index.json --skip-duplicate
 ```
 
-### Option B — download the GitHub-Release-built artifacts
-
-```bash
-gh release download v0.4.0-preview.4 \
-  --repo systemslibrarian/argon2id-passwordhasher \
-  --pattern '*.nupkg' \
-  --pattern '*.snupkg' \
-  --dir artifacts
-```
-
-Option A is recommended because it lets you verify the pack output
-against a clean local build before publishing. Option B is faster if
-you trust the workflow output and just want to mirror it to NuGet.
-
-### Verify provenance before publishing
-
-If you took Option B (or any time you want to double-check), verify
-each artifact's GitHub-issued provenance attestation matches the
-expected source repo and ref:
-
-```bash
-gh attestation verify artifacts/Argon2id.PasswordHasher.0.4.0-preview.4.nupkg \
-  --repo systemslibrarian/argon2id-passwordhasher
-gh attestation verify artifacts/Argon2id.PasswordHasher.AspNetCore.0.4.0-preview.4.nupkg \
-  --repo systemslibrarian/argon2id-passwordhasher
-```
-
-Both should print a green ✓ matched against the tagged commit's
-workflow run.
-
-### Push
-
-```bash
-# Read the key once into a shell variable (NOT exported to subprocesses).
-KEY="$(cat .nuget-api-key | tr -d '\r\n')"
-
-# Push each .nupkg individually — dotnet auto-discovers and pushes the
-# matching .snupkg to the symbols server. --skip-duplicate makes the
-# command idempotent if the version already exists on NuGet.
-dotnet nuget push artifacts/Argon2id.PasswordHasher.0.4.0-preview.4.nupkg \
-  --api-key "$KEY" \
-  --source https://api.nuget.org/v3/index.json \
-  --skip-duplicate
-
-dotnet nuget push artifacts/Argon2id.PasswordHasher.AspNetCore.0.4.0-preview.4.nupkg \
-  --api-key "$KEY" \
-  --source https://api.nuget.org/v3/index.json \
-  --skip-duplicate
-
-# Forget the variable.
-unset KEY
-```
-
-Each push should print four `Created` lines (the `.nupkg` + the
-auto-discovered `.snupkg` per package).
-
-### Confirm
-
-Within 5–15 minutes of NuGet indexing, both packages are visible:
-
-- https://www.nuget.org/packages/Argon2id.PasswordHasher
-- https://www.nuget.org/packages/Argon2id.PasswordHasher.AspNetCore
-
-## Updating the GitHub Release after publishing
-
-Once the NuGet publish is confirmed, edit the auto-generated GitHub
-Release to remove the "NuGet publication is a separate, manual CLI
-step" status banner — the workflow inserts it because at the moment
-of release creation, the publish hasn't happened yet:
-
-```bash
-gh release edit v0.4.0-preview.4 \
-  --repo systemslibrarian/argon2id-passwordhasher \
-  --notes "$(gh release view v0.4.0-preview.4 --json body -q .body \
-    | sed '/^## Status/,/^## Auto-generated notes$/d')"
-```
-
-(Or just open the release in the GitHub UI and edit the description.)
-
-## Rotating the API key
-
-NuGet API keys expire at 365 days max. To rotate:
-
-1. Create a new key on nuget.org with the same name (e.g. append the
-   current year) and the same `Argon2id.PasswordHasher*` glob scope.
-2. Overwrite `.nuget-api-key` with the new value.
-3. Revoke the old key in the nuget.org dashboard.
-
-The next push uses the new key automatically.
+Then revoke the key on nuget.org. Do not store it.
 
 ---
 

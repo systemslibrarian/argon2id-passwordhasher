@@ -1,15 +1,16 @@
 name: Release
 
-# Builds, tests, packs, generates SBOMs + build-provenance attestations, and
-# creates a GitHub Release with all artifacts attached — when a version tag
-# is pushed, e.g.:
-#   git tag v0.4.0-preview.4 && git push origin v0.4.0-preview.4
+# Builds, tests, packs, generates SBOMs + build-provenance attestations,
+# creates a GitHub Release with all artifacts attached, and then publishes to
+# NuGet.org via Trusted Publishing — when a version tag is pushed, e.g.:
+#   git tag v1.0.0-rc.1 && git push origin v1.0.0-rc.1
 #
-# This workflow does NOT push to NuGet.org. NuGet publication is intentionally
-# a manual CLI step performed from a maintainer's workstation so the operator
-# can inspect the packaged artifacts before they go public. The packaged
-# .nupkg / .snupkg files are attached to the GitHub Release for download, and
-# the local procedure is documented in PUBLISHING.md.
+# NuGet publication uses OIDC Trusted Publishing (no long-lived API key
+# anywhere) and is gated behind the 'nuget' environment, which requires
+# manual maintainer approval. A tag push therefore PREPARES everything and
+# stops; the maintainer inspects the packed artifacts on the GitHub Release,
+# then approves the waiting 'publish-nuget' job to make the version public.
+# Full procedure + one-time setup: PUBLISHING.md.
 
 on:
   push:
@@ -131,8 +132,8 @@ jobs:
           retention-days: 90
 
       - name: Create GitHub Release
-        # NuGet publication is intentionally NOT done here — see PUBLISHING.md.
-        # The release notes call out the manual-push step explicitly so a
+        # NuGet publication happens in the separate approval-gated
+        # 'publish-nuget' job below. The release notes call that out so a
         # maintainer never assumes "tagged == published".
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -146,10 +147,55 @@ jobs:
           # quoted string so it stays inside this YAML block scalar — a
           # column-0 heredoc body would dedent out of the scalar and make the
           # whole workflow file fail YAML validation.
-          NOTES=$'## Status\n\nThis GitHub Release contains the packaged artifacts and provenance\nattestations for the tagged version.\n\n**NuGet publication is a separate, manual CLI step.** Until a maintainer\nruns the push from a workstation, these packages are NOT yet available\non nuget.org. See [PUBLISHING.md](../blob/main/PUBLISHING.md) for the\nprocedure.'
+          NOTES=$'## Status\n\nThis GitHub Release contains the packaged artifacts and provenance\nattestations for the tagged version.\n\n**NuGet publication awaits maintainer approval.** The publish job in this\nsame workflow run pushes to nuget.org via OIDC Trusted Publishing once a\nmaintainer approves the `nuget` environment deployment. Until then, these\npackages are NOT yet on nuget.org. See [PUBLISHING.md](../blob/main/PUBLISHING.md).'
           gh release create "${{ github.ref_name }}" \
             artifacts/*.nupkg artifacts/*.snupkg sbom/*.json \
             --title "${{ github.ref_name }}" \
             --notes "$NOTES" \
             --generate-notes \
             $PRERELEASE_FLAG
+
+  publish-nuget:
+    name: Publish to NuGet.org (Trusted Publishing)
+    needs: package
+    runs-on: ubuntu-latest
+    # Deliberate-publish gate: the 'nuget' environment requires manual
+    # maintainer approval, so tagging PREPARES a release and a human makes it
+    # public — the same policy as the old manual-CLI flow, minus the
+    # long-lived API key. The nuget.org Trusted Publishing policy must match
+    # this repo + this workflow file + this environment name.
+    environment: nuget
+    permissions:
+      id-token: write   # OIDC token, exchanged for a short-lived NuGet API key
+    steps:
+      - name: Download packed artifacts
+        # Reuses the exact bytes that were attested and attached to the
+        # GitHub Release — no rebuild, so what was inspected is what ships.
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-${{ github.ref_name }}
+          path: release-artifacts
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: NuGet login (OIDC → short-lived API key)
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: systemslibrarian   # nuget.org username that owns the Trusted Publishing policy
+
+      - name: Push packages
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          # dotnet auto-discovers and pushes the matching .snupkg alongside
+          # each .nupkg; --skip-duplicate keeps re-approvals idempotent.
+          for pkg in release-artifacts/artifacts/*.nupkg; do
+            dotnet nuget push "$pkg" \
+              --api-key "$NUGET_API_KEY" \
+              --source https://api.nuget.org/v3/index.json \
+              --skip-duplicate
+          done
