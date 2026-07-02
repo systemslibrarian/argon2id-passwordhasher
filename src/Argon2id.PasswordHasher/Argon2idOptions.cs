@@ -19,8 +19,9 @@ namespace Argon2id.PasswordHasher;
 /// <para>
 /// Properties are settable to support the standard .NET Options pattern
 /// (<c>IOptions&lt;TOptions&gt;</c>) and binding from <c>IConfiguration</c>.
-/// Hashers treat their options as effectively immutable once constructed &#8212;
-/// do not mutate an <see cref="Argon2idOptions"/> instance after passing it to a hasher.
+/// Hashers take a validated snapshot of the options at construction, so mutating
+/// an <see cref="Argon2idOptions"/> instance after passing it to a hasher has no
+/// effect on that hasher.
 /// </para>
 /// </remarks>
 public sealed record Argon2idOptions
@@ -54,8 +55,10 @@ public sealed record Argon2idOptions
 
     /// <summary>
     /// The library's recommended defaults. Equivalent to <c>new Argon2idOptions()</c>.
+    /// Returns a fresh instance on every access, so mutating the returned object
+    /// can never alter the defaults seen elsewhere in the process.
     /// </summary>
-    public static Argon2idOptions Recommended { get; } = new();
+    public static Argon2idOptions Recommended => new();
 
     /// <summary>
     /// Validates the parameter set, throwing <see cref="ArgumentOutOfRangeException"/>

@@ -154,4 +154,34 @@ public class MetricsTests
         // Empty / null is treated as a caller-input issue, not a parser drama.
         Assert.DoesNotContain(capture.Measurements, m => m.Key == Argon2idDiagnostics.ParseFailureCountName);
     }
+
+    [Fact]
+    public void Verify_EmptyPassword_ValidHash_CountsAttempt_ButNotParseFailure()
+    {
+        using var capture = new Capture();
+        var hasher = new Argon2idPasswordHasher(FastOptions);
+        string stored = hasher.HashPassword("real-password");
+        capture.Measurements.Clear();
+
+        bool ok = hasher.VerifyPassword("", stored);
+
+        Assert.False(ok);
+        // The attempt counts ("regardless of outcome"), but the stored hash is
+        // perfectly valid — the corrupted-data alarm must not fire.
+        Assert.Contains(capture.Measurements, m => m.Key == Argon2idDiagnostics.VerifyCountName && m.Value == 1);
+        Assert.DoesNotContain(capture.Measurements, m => m.Key == Argon2idDiagnostics.ParseFailureCountName);
+    }
+
+    [Fact]
+    public void Verify_MalformedHash_CountsAttempt_AndParseFailure()
+    {
+        using var capture = new Capture();
+        var hasher = new Argon2idPasswordHasher(FastOptions);
+
+        _ = hasher.VerifyPassword("anything", "not-a-phc-string");
+
+        // Early-return attempts are still verification attempts.
+        Assert.Contains(capture.Measurements, m => m.Key == Argon2idDiagnostics.VerifyCountName && m.Value == 1);
+        Assert.Contains(capture.Measurements, m => m.Key == Argon2idDiagnostics.ParseFailureCountName && m.Value == 1);
+    }
 }

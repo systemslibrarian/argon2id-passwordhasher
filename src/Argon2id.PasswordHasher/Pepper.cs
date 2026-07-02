@@ -1,4 +1,6 @@
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Unicode;
 
 namespace Argon2id.PasswordHasher;
 
@@ -20,12 +22,21 @@ public sealed class Pepper
 
     /// <summary>Creates a pepper.</summary>
     /// <param name="id">
-    /// A short, stable identifier (e.g. <c>"2026-05"</c>). Must be non-empty. This value
-    /// is embedded in every hash produced with the pepper, so never change the bytes of
-    /// an existing id &#8212; introduce a new id instead.
+    /// A short, stable identifier (e.g. <c>"2026-05"</c>). Must be non-empty, must be
+    /// well-formed Unicode (no unpaired surrogates), and must encode to at most
+    /// 64 UTF-8 bytes &#8212; the PHC <c>keyid</c> limit this library's parser enforces.
+    /// This value is embedded in every hash produced with the pepper, so never change
+    /// the bytes of an existing id &#8212; introduce a new id instead.
     /// </param>
     /// <param name="key">The secret key bytes. Must be at least 16 bytes (128 bits).</param>
-    /// <exception cref="ArgumentException"><paramref name="id"/> is null or empty.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="id"/> is null or empty, contains ill-formed UTF-16 (an unpaired
+    /// surrogate), or encodes to more than 64 UTF-8 bytes. These are rejected at
+    /// construction because hashes produced with such an id could never be verified:
+    /// the PHC parser caps <c>keyid</c> at 64 bytes, and an unpaired surrogate would be
+    /// silently rewritten to U+FFFD on encode, so the stored keyid would never match
+    /// this pepper's id again.
+    /// </exception>
     /// <exception cref="ArgumentNullException"><paramref name="key"/> is null.</exception>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="key"/> is shorter than 16 bytes.</exception>
     public Pepper(string id, byte[] key)
@@ -34,6 +45,8 @@ public sealed class Pepper
         {
             throw new ArgumentException("Pepper id must not be null or empty.", nameof(id));
         }
+
+        ValidateIdRoundTrips(id);
 
         ArgumentNullException.ThrowIfNull(key);
         if (key.Length < 16)
@@ -46,6 +59,46 @@ public sealed class Pepper
         // Defensive copy so the caller can zero its own buffer. Held for the lifetime
         // of this Pepper and reused on every hash/verify (see KnownSecret).
         _key = (byte[])key.Clone();
+    }
+
+    /// <summary>
+    /// Rejects ids that cannot round-trip through the stored hash. The PHC
+    /// <c>keyid</c> is the UTF-8 encoding of the id, capped at
+    /// <see cref="PhcString.MaxKeyIdBytes"/> bytes by the parser; an id that
+    /// exceeds the cap, or contains an unpaired surrogate (which UTF-8 encoding
+    /// would silently rewrite to U+FFFD), would produce hashes this library can
+    /// never verify — a silent lockout. Fail fast at construction instead.
+    /// </summary>
+    private static void ValidateIdRoundTrips(string id)
+    {
+        // UTF-8 never encodes to fewer bytes than UTF-16 code units, so an id
+        // longer than the byte cap in chars cannot fit and needs no buffer.
+        if (id.Length <= PhcString.MaxKeyIdBytes)
+        {
+            // Worst case 3 UTF-8 bytes per UTF-16 code unit.
+            Span<byte> utf8 = stackalloc byte[PhcString.MaxKeyIdBytes * 3];
+            OperationStatus status = Utf8.FromUtf16(
+                id, utf8, out _, out int bytesWritten, replaceInvalidSequences: false);
+
+            if (status == OperationStatus.InvalidData)
+            {
+                throw new ArgumentException(
+                    "Pepper id must be well-formed Unicode. It contains an unpaired surrogate, "
+                    + "which cannot survive the UTF-8 round-trip through the stored hash's keyid — "
+                    + "hashes produced with it could never be verified.", nameof(id));
+            }
+
+            if (status == OperationStatus.Done && bytesWritten <= PhcString.MaxKeyIdBytes)
+            {
+                return;
+            }
+        }
+
+        throw new ArgumentException(
+            $"Pepper id must encode to at most {PhcString.MaxKeyIdBytes} UTF-8 bytes "
+            + "(the PHC keyid limit enforced during verification); hashes produced with a "
+            + "longer id could never be verified. Note the limit is bytes, not characters — "
+            + "non-ASCII characters use 2-4 bytes each.", nameof(id));
     }
 
     /// <summary>The stable identifier embedded in hashes produced with this pepper.</summary>

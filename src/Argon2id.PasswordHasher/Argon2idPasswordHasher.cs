@@ -66,13 +66,20 @@ public sealed class Argon2idPasswordHasher
     public Argon2idPasswordHasher(Argon2idOptions options, PepperRing? pepper)
     {
         ArgumentNullException.ThrowIfNull(options);
-        options.Validate();
-        _options = options;
+        // Snapshot before validating so a caller (or another thread) mutating the
+        // original instance afterwards can never weaken this hasher's parameters
+        // or bypass the fail-fast validation below.
+        Argon2idOptions snapshot = options with { };
+        snapshot.Validate();
+        _options = snapshot;
         _pepper = pepper;
     }
 
-    /// <summary>The parameters this hasher uses when producing new hashes.</summary>
-    public Argon2idOptions Options => _options;
+    /// <summary>
+    /// The parameters this hasher uses when producing new hashes. Returns a snapshot;
+    /// mutating the returned instance does not affect this hasher.
+    /// </summary>
+    public Argon2idOptions Options => _options with { };
 
     /// <summary>The PHC algorithm prefix every Argon2id hash begins with.</summary>
     /// <remarks>
@@ -198,10 +205,14 @@ public sealed class Argon2idPasswordHasher
     /// <inheritdoc cref="Verify(string, string)" />
     public VerifyResult Verify(ReadOnlySpan<char> password, string encodedHash)
     {
-        if (password.IsEmpty || !PhcString.TryParse(encodedHash, out PhcString? parsed))
+        if (password.IsEmpty)
         {
-            RecordParseFailureIfApplicable(encodedHash);
-            return VerifyResult.Failed;
+            return FailedEarly(parseFailed: false, encodedHash);
+        }
+
+        if (!PhcString.TryParse(encodedHash, out PhcString? parsed))
+        {
+            return FailedEarly(parseFailed: true, encodedHash);
         }
 
         return VerifyAndZero(EncodeUtf8(password), parsed!);
@@ -210,13 +221,35 @@ public sealed class Argon2idPasswordHasher
     /// <inheritdoc cref="Verify(string, string)" />
     public VerifyResult Verify(ReadOnlySpan<byte> password, string encodedHash)
     {
-        if (password.IsEmpty || !PhcString.TryParse(encodedHash, out PhcString? parsed))
+        if (password.IsEmpty)
         {
-            RecordParseFailureIfApplicable(encodedHash);
-            return VerifyResult.Failed;
+            return FailedEarly(parseFailed: false, encodedHash);
+        }
+
+        if (!PhcString.TryParse(encodedHash, out PhcString? parsed))
+        {
+            return FailedEarly(parseFailed: true, encodedHash);
         }
 
         return VerifyAndZero(password.ToArray(), parsed!);
+    }
+
+    /// <summary>
+    /// Records metrics for a verification attempt rejected before the Argon2id
+    /// round runs. Every attempt counts toward <c>argon2id.verify.count</c>
+    /// ("regardless of outcome"); the parse-failure counter moves only when the
+    /// stored value was actually parsed and rejected — an empty password
+    /// short-circuits before parsing and says nothing about the stored data.
+    /// </summary>
+    private static VerifyResult FailedEarly(bool parseFailed, string? encodedHash)
+    {
+        if (parseFailed)
+        {
+            RecordParseFailureIfApplicable(encodedHash);
+        }
+
+        Argon2idInstruments.VerifyCount.Add(1);
+        return VerifyResult.Failed;
     }
 
     /// <summary>
@@ -240,9 +273,10 @@ public sealed class Argon2idPasswordHasher
     /// </summary>
     /// <param name="encodedHash">The stored PHC string.</param>
     /// <returns>
-    /// <see langword="true"/> if the hash is unparseable, any stored parameter is below the
-    /// current configuration, or (when a pepper ring is configured) the hash's pepper differs
-    /// from the active pepper; otherwise <see langword="false"/>.
+    /// <see langword="true"/> if the hash is unparseable, any stored parameter (including
+    /// salt and tag length) is below the current configuration, the hash's pepper differs
+    /// from the configured active pepper, or the hash carries a pepper id while this hasher
+    /// has no pepper ring (such a hash can never verify here); otherwise <see langword="false"/>.
     /// </returns>
     /// <remarks>
     /// Prefer <see cref="Verify(string, string)"/> when you also need to verify the
@@ -263,13 +297,22 @@ public sealed class Argon2idPasswordHasher
         if (parsed.MemorySizeKib < _options.MemorySizeKib
             || parsed.Iterations < _options.Iterations
             || parsed.DegreeOfParallelism < _options.DegreeOfParallelism
+            || parsed.Salt.Length < _options.SaltSizeBytes
             || parsed.Hash.Length < _options.HashSizeBytes)
         {
             return true;
         }
 
+        if (_pepper is null)
+        {
+            // A hash that carries a keyid can never verify under a hasher with
+            // no pepper ring (verification fails closed), so it needs attention
+            // whether the de-peppering was deliberate or an outage.
+            return parsed.KeyId is not null;
+        }
+
         // Upgrade hashes that predate, or use a retired, pepper.
-        return _pepper is not null && !string.Equals(parsed.KeyId, _pepper.Active.Id, StringComparison.Ordinal);
+        return !string.Equals(parsed.KeyId, _pepper.Active.Id, StringComparison.Ordinal);
     }
 
     private string HashAndZero(byte[] password)
