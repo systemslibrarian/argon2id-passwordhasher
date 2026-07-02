@@ -104,7 +104,10 @@ public static class IdentityBuilderExtensions
 
         // Replace the default IPasswordHasher<TUser> registration with a
         // factory that wraps Argon2idPasswordHasher<TUser> + the stock
-        // PasswordHasher<TUser> in a migrating adapter.
+        // PasswordHasher<TUser> in a migrating adapter. The marker lets a later
+        // plain AddArgon2idPasswordHasher call detect and preserve this
+        // registration instead of silently locking out legacy users.
+        builder.Services.TryAddSingleton<Argon2idMigrationMarker<TUser>>();
         builder.Services.Replace(ServiceDescriptor.Singleton<IPasswordHasher<TUser>>(sp =>
         {
             var argon2id = new Argon2idPasswordHasher<TUser>(
@@ -138,6 +141,7 @@ public static class IdentityBuilderExtensions
 
         builder.Services.AddArgon2idPasswordHasher<TUser>(configureOptions);
 
+        builder.Services.TryAddSingleton<Argon2idMigrationMarker<TUser>>();
         builder.Services.Replace(ServiceDescriptor.Singleton<IPasswordHasher<TUser>>(sp =>
         {
             var argon2id = new Argon2idPasswordHasher<TUser>(

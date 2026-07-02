@@ -107,9 +107,30 @@ public sealed class MigratingPasswordHasher<TUser> : IPasswordHasher<TUser>
         {
             PasswordVerificationResult.Success
                 or PasswordVerificationResult.SuccessRehashNeeded
-                => PasswordVerificationResult.SuccessRehashNeeded,
+                // The Argon2id hasher (correctly) refuses to hash an empty
+                // password, so signalling a rehash for a legacy empty-password
+                // account would make Identity call HashPassword("") mid-login
+                // and throw. Report plain Success instead: the login works and
+                // the account stays on its legacy hash until the password is
+                // actually changed.
+                => string.IsNullOrEmpty(providedPassword)
+                    ? PasswordVerificationResult.Success
+                    : PasswordVerificationResult.SuccessRehashNeeded,
             _ => legacyResult,
         };
     }
 
+}
+
+/// <summary>
+/// Marker registered by <c>AddArgon2idPasswordHasherWithMigration</c> so a later
+/// plain <c>AddArgon2idPasswordHasher</c> call can detect the migrating hasher
+/// (registered via factory, so its implementation type is not introspectable)
+/// and preserve it instead of silently replacing it — which would lock out
+/// every user still on a legacy hash.
+/// </summary>
+/// <typeparam name="TUser">The Identity user type.</typeparam>
+internal sealed class Argon2idMigrationMarker<TUser>
+    where TUser : class
+{
 }

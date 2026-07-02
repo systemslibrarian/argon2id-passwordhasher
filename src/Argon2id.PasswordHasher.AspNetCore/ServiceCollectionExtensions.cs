@@ -50,9 +50,15 @@ public static class ServiceCollectionExtensions
 
         if (options is not null)
         {
+            // Snapshot now: the Configure callback runs lazily at first IOptions
+            // resolution, and capturing the caller's live instance would let a
+            // post-registration mutation weaken the hasher — the same footgun the
+            // core constructor's snapshot exists to prevent.
+            Argon2idOptions snapshot = options with { };
+
             // Apply the explicit options through the standard IOptions pipeline so
             // they're discoverable to anything else that resolves IOptions<Argon2idOptions>.
-            services.AddOptions<Argon2idOptions>().Configure(o => CopyInto(options, o));
+            services.AddOptions<Argon2idOptions>().Configure(o => CopyInto(snapshot, o));
         }
 
         if (pepper is not null)
@@ -112,7 +118,10 @@ public static class ServiceCollectionExtensions
     private static IServiceCollection AddArgon2idHasherCore<TUser>(IServiceCollection services)
         where TUser : class
     {
-        services.AddOptions<Argon2idOptions>();
+        // ValidateOnStart surfaces an invalid configuration when the host starts
+        // (fail-fast) instead of as a 500 on the first login request. Hosts not
+        // built on Microsoft.Extensions.Hosting still validate at first resolution.
+        services.AddOptions<Argon2idOptions>().ValidateOnStart();
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IValidateOptions<Argon2idOptions>, Argon2idOptionsValidator>());
 
@@ -126,7 +135,13 @@ public static class ServiceCollectionExtensions
             return new CoreHasher(opts, ring);
         });
 
-        services.Replace(ServiceDescriptor.Singleton<IPasswordHasher<TUser>, Argon2idPasswordHasher<TUser>>());
+        // A migrating registration (AddArgon2idPasswordHasherWithMigration) already
+        // routes Argon2id hashes to this hasher; replacing it with the plain adapter
+        // would silently fail every user still on a legacy hash. Preserve it.
+        if (!services.Any(d => d.ServiceType == typeof(Argon2idMigrationMarker<TUser>)))
+        {
+            services.Replace(ServiceDescriptor.Singleton<IPasswordHasher<TUser>, Argon2idPasswordHasher<TUser>>());
+        }
 
         return services;
     }
